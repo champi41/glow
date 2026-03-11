@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCoyN0GWwZ4eGen51S7hxHcuR4IE6DAyF8",
-  authDomain: "reservasapp-e4da2.firebaseapp.com",
-  projectId: "reservasapp-e4da2",
-  storageBucket: "reservasapp-e4da2.firebasestorage.app",
-  messagingSenderId: "585120825717",
-  appId: "1:585120825717:web:22901870cb800380b2933c",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // Initialize Firebase

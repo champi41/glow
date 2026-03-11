@@ -10,7 +10,7 @@ import { usePushNotifications } from "../../hooks/usePushNotifications.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./ProfilePage.css";
 
-const CLOUD_NAME = "djghs9u2k";
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djghs9u2k";
 const BIO_MAX = 160;
 const PORTFOLIO_MAX = 5;
 
