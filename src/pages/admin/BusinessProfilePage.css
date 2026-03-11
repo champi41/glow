@@ -1,0 +1,505 @@
+/* src/pages/admin/BusinessProfilePage.css */
+
+.business-profile-page {
+  padding-bottom: 48px;
+}
+
+.business-profile-loading {
+  padding: 48px 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.business-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 400px;
+}
+
+/* ── Logo (80px círculo) ── */
+.business-profile-logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.business-profile-logo-btn {
+  position: relative;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+  line-height: 0;
+}
+
+.business-profile-logo-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.business-profile-logo-btn:disabled {
+  cursor: not-allowed;
+}
+
+.business-profile-logo {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-border);
+  transition: opacity 0.2s ease;
+}
+
+.business-profile-logo--uploading {
+  opacity: 0.6;
+}
+
+.business-profile-logo__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.business-profile-logo__initial {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
+
+.business-profile-logo__camera {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+}
+
+.business-profile-logo__overlay {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+/* ── Portada (160px alto, ancho completo) ── */
+.business-profile-cover-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.business-profile-cover-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.business-profile-cover-btn {
+  position: relative;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  line-height: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.business-profile-cover-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.business-profile-cover-btn:disabled {
+  cursor: not-allowed;
+}
+
+.business-profile-cover {
+  width: 100%;
+  height: 160px;
+  background: var(--color-surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+}
+
+.business-profile-cover--uploading {
+  opacity: 0.6;
+}
+
+.business-profile-cover__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.business-profile-cover__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  opacity: 0.6;
+}
+
+.business-profile-cover__overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.business-profile-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Error ── */
+.business-profile-error {
+  font-size: 13px;
+  color: var(--color-error);
+  margin: 0;
+}
+
+/* ── Char count ── */
+.business-profile-char-count {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  margin-left: 4px;
+}
+
+/* ── Form fields (mismo estilo admin) ── */
+.business-profile-form .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.business-profile-form .form-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.business-profile-form .form-field input,
+.business-profile-form .form-field textarea {
+  padding: 11px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  resize: none;
+}
+
+.business-profile-form .form-field input:focus,
+.business-profile-form .form-field textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-bg);
+}
+
+.business-profile-form .form-field input::placeholder,
+.business-profile-form .form-field textarea::placeholder {
+  color: var(--color-text-tertiary);
+  font-weight: 300;
+}
+
+/* ── Apariencia / tema ── */
+.business-profile-appearance {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.business-profile-appearance__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.business-profile-appearance__subtitle {
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.theme-mode-toggle {
+  display: flex;
+  gap: 12px;
+}
+
+.theme-mode-option {
+  position: relative;
+  flex: 1;
+  min-width: 120px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.theme-mode-option__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-2);
+}
+
+.theme-mode-option__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.theme-mode-option__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.theme-mode-option__desc {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.theme-mode-option__check {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 13px;
+  color: var(--color-accent);
+}
+
+.theme-mode-option--active {
+  border-width: 2px;
+  border-color: var(--color-accent);
+}
+
+.theme-recommended {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.theme-recommended__title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+}
+
+.theme-recommended__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.theme-color-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.theme-color-swatch--active {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.theme-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.theme-preview__label {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+}
+
+.theme-preview__card {
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.theme-preview__name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-style: italic;
+  margin: 0;
+}
+
+.theme-preview__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.theme-preview__price {
+  font-weight: 500;
+}
+
+.theme-preview__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.theme-custom {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.theme-custom__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.theme-custom__title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.theme-custom__badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.theme-custom__badge--active {
+  background: rgba(74, 124, 89, 0.12);
+  color: var(--color-success);
+}
+
+.theme-custom__badge--inactive {
+  background: var(--color-surface-2);
+  color: var(--color-text-tertiary);
+}
+
+.theme-custom__warning {
+  font-size: 12px;
+  background: rgba(201, 150, 58, 0.1);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(201, 150, 58, 0.25);
+  padding: 10px 12px;
+  color: var(--color-text-secondary);
+}
+
+.theme-custom__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.theme-custom__color-input {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: none;
+}
+
+.theme-custom__hex-input {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.theme-custom__apply-btn {
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  cursor: pointer;
+}
+
+/* ── Botón guardar ── */
+.business-profile-save-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}

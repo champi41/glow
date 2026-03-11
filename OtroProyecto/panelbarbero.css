@@ -1,0 +1,668 @@
+:root {
+  --sombra-s:
+    inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 1px 2px rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.1);
+  --sombra-m:
+    inset 0 1px 2px rgba(255, 255, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.25),
+    0 4px 8px rgba(0, 0, 0, 0.1);
+  --sombra-l:
+    inset 0 1px 2px rgba(255, 255, 255, 0.75), 0 4px 6px rgba(0, 0, 0, 0.25),
+    0 6px 10px rgba(0, 0, 0, 0.1);
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.fondo {
+  position: fixed;
+  display: flex;
+  bottom: 0%;
+  padding: 10px;
+  justify-content: center;
+  width: 100%;
+  z-index: 1000;
+}
+.barra {
+  display: flex;
+  background-color: rgba(255, 255, 255, 0);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--sombra-l);
+  border-radius: 5rem;
+  padding: 7px;
+  gap: 7px;
+}
+.barra button {
+  background-color: rgba(255, 255, 255, 0);
+  padding: 10px 20px;
+  transition: all 0.5s ease;
+  border-radius: 5rem;
+}
+.barra button.active {
+  background-color: rgba(245, 245, 245, 0.5);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--sombra-m);
+  transition: all 0.5s ease;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+.header-citas-filtros {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.chips-estados {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+.estadosCheck {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+.select-tiempo-citas {
+  font-size: larger;
+  width: 100%;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: white;
+  outline: none;
+  box-shadow: var(--sombra-m);
+}
+
+.btn-cargar-mas {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 20px;
+  background: #eee;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.seccion-citas {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 90px;
+  gap: 10px;
+}
+.seccion-citas h2 {
+  font-weight: 600;
+  font-size: xx-large;
+}
+.listaCitas {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.cita {
+  font-weight: 500;
+  border-radius: 10px;
+  padding: 10px;
+  background-color: whitesmoke;
+  box-shadow: var(--sombra-l);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  opacity: 0;
+  animation: fadeInUp 0.4s ease forwards;
+  animation-delay: calc(var(--i) * 0.075s);
+}
+.descCita {
+  display: flex;
+  justify-content: space-between;
+}
+.menu-flotante {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+}
+.menu-flotante button {
+  margin-top: 10px;
+  padding: 7px 0;
+  border-radius: 6px;
+  box-shadow: var(--sombra-m);
+}
+.menu-flotante #cancelar {
+  background-color: rgb(255, 0, 0);
+  color: white;
+}
+.menu-flotante #confirmar {
+  background-color: green;
+  color: white;
+}
+.menu-flotante #finalizar {
+  background-color: black;
+}
+.menu-flotante #borrar {
+  background-color: whitesmoke;
+  box-shadow: var(--sombra-m);
+  color: red;
+}
+.menu-flotante #contactar {
+  background-color: whitesmoke;
+  color: black;
+}
+.infoCita {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.estadoCita {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: end;
+}
+.estadoCita span {
+  border-radius: 5px;
+  padding: 3px 7px;
+  text-transform: capitalize;
+}
+.cita[data-estado="pendiente"] {
+  background-color: #ffff00;
+}
+.cita[data-estado="confirmada"] {
+  background-color: #008000;
+  color: white;
+}
+.cita[data-estado="cancelada"] {
+  background-color: #ff0000;
+  color: white;
+}
+.cita[data-estado="finalizada"] {
+  background-color: black;
+  color: white;
+}
+.btnGestionar {
+  padding: 5px 9px;
+  font-weight: 500;
+  box-shadow: var(--sombra-s);
+  border-radius: 5px;
+  background-color: whitesmoke;
+  color: rgb(0, 0, 0);
+}
+/*Horario */
+
+.seccion-horario {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 90px;
+  gap: 10px;
+}
+.titVista {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.titVista select {
+  outline: none;
+  border-radius: 10px;
+  box-shadow: var(--sombra-s);
+  padding: 3px 10px;
+  font-size: large;
+  font-weight: 500;
+  border: 1px solid rgb(195, 195, 195);
+}
+.seccion-horario h2 {
+  font-size: xx-large;
+  font-weight: 600;
+}
+.agenda-container {
+  gap: 10px;
+  display: flex;
+  flex-direction: column;
+}
+.headerHorario {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: larger;
+  font-weight: 500;
+}
+.headerHorario input {
+  color: black;
+  border-radius: 10px;
+  box-shadow: var(--sombra-s);
+  padding: 3px 10px;
+  border: 1px solid rgb(195, 195, 195);
+}
+.gridHoras {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+#horasAdmin{
+  display: flex;
+  flex-direction: column;
+}
+#horasAdmin button{
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+.gridHoras button {
+  font-size: larger;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0;
+  animation: fadeInUp 0.4s ease forwards;
+  animation-delay: calc(var(--i) * 0.01s);
+}
+.estado-label {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.gridHoras .btn-hora-admin {
+  font-size: medium;
+  padding: 5px;
+}
+.btn-hora-admin.pendiente {
+  background-color: #fff3bf;
+  border-color: #fab005;
+  color: #855b00;
+}
+
+.btn-hora-admin.confirmada {
+  background-color: #ebfbee;
+  border-color: #40c057;
+  color: #2b8a3e;
+}
+
+.btn-hora-admin.bloqueada {
+  background-color: #343a40;
+  border-color: #212529;
+  color: #ffffff;
+}
+.config-semanal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lista-dias {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fila-dia-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  background-color: whitesmoke;
+  box-shadow: var(--sombra-m);
+  border-radius: 10px;
+}
+.fila-header{
+  display: flex;
+  justify-content: space-between;
+  font-size: large;
+  align-items: center;
+}
+.controles-row{
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.controles-row .time-inputs{
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: space-between;
+}
+.time-inputs div{
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: space-evenly;
+}
+.time-inputs .input-group-time input{
+  background-color: whitesmoke;
+  border: 1px solid rgb(191, 191, 191);
+  border-radius: 10px;
+  box-shadow: var(--sombra-s);
+  padding: 5px 10px;
+}
+.almuerzo-section{
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.chk-almuerzo{
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.almuerzo-horas{
+  display: flex;
+  justify-content: space-evenly;
+}
+.almuerzo-horas input{
+  background-color: whitesmoke;
+  border: 1px solid rgb(191, 191, 191);
+  border-radius: 10px;
+  box-shadow: var(--sombra-s);
+  padding: 5px 10px;
+}
+.btn-save-global{
+  background-color: black;
+  color: white;
+  font-weight: 500;
+  font-size: large;
+  padding: 15px 0;
+  border-radius: 10px;
+}
+/* Gestion servicios*/
+
+.servicios-container {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 90px;
+  gap: 5px;
+}
+.headerServicios {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 10px 0px;
+}
+.headerServicios h1 {
+  font-weight: 600;
+  font-size: xx-large;
+}
+.headerServicios button {
+  background-color: whitesmoke;
+  padding: 5px 10px;
+  box-shadow: var(--sombra-s);
+  border-radius: 10px;
+  font-weight: 500;
+}
+.form-servicio {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 10px;
+}
+.form-servicio #nombre {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid black;
+  border-radius: 5px;
+}
+.form-servicio .precioMinutos {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+.form-servicio .precioMinutos input {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid black;
+  border-radius: 5px;
+}
+.selector-categorias {
+  display: flex;
+  flex-direction: column;
+}
+.selector-categorias .checkCats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.checkCats input {
+  display: none;
+}
+.checkCats label {
+  padding: 3px 7px;
+  border: 1px solid black;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+.checkCats label:has(input:checked) {
+  background-color: black; /* Color azul por ejemplo */
+  color: white;
+  transition: all 0.3s ease;
+}
+.nota {
+  color: rgb(57, 57, 57);
+}
+.form-servicio textarea {
+  padding: 5px;
+  border: 1px solid black;
+  border-radius: 5px;
+}
+.selector-profesionales {
+  display: flex;
+  flex-direction: column;
+}
+.checkPros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.checkPros input {
+  display: none;
+}
+.checkPros label {
+  padding: 3px 7px;
+  border: 1px solid black;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+.checkPros label:has(input:checked) {
+  background-color: black; /* Color azul por ejemplo */
+  color: white;
+  transition: all 0.3s ease;
+}
+.form-servicio .boton-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.form-servicio button {
+  background-color: whitesmoke;
+  padding: 5px;
+  width: 50%;
+  border-radius: 10px;
+  box-shadow: var(--sombra-s);
+  font-weight: 500;
+  font-size: larger;
+}
+.categorias {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.categorias-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding: 0 10px;
+}
+.categorias-header h2 {
+  font-weight: 500;
+  font-size: x-large;
+}
+.categorias-header button {
+  background-color: whitesmoke;
+  padding: 5px 15px;
+  box-shadow: var(--sombra-s);
+  border-radius: 10px;
+  font-weight: 500;
+}
+.modal-gestion-cats {
+  display: flex;
+  flex-direction: column;
+  padding: 0 10px;
+  border-radius: 20px;
+  gap: 5px;
+}
+.form-agregar-cat {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+}
+.form-agregar-cat input {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid black;
+  border-radius: 10px;
+}
+.form-agregar-cat button {
+  padding: 0 10px;
+  background-color: whitesmoke;
+  border-radius: 10px;
+  box-shadow: var(--sombra-s);
+}
+.lista-gestion-cats {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.catEdit {
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  background-color: whitesmoke;
+  box-shadow: var(--sombra-s);
+  border-radius: 10px;
+}
+.catEdit .acciones-cat {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+.acciones-cat button {
+  padding: 0 5px;
+}
+.carruselCategorias {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 10px;
+  padding: 5px 10px;
+}
+.carruselCategorias button {
+  background-color: whitesmoke;
+  flex-shrink: 0;
+  font-size: larger;
+  padding: 10px 20px;
+  border: none;
+  color: rgb(0, 0, 0);
+  box-shadow: var(--sombra-s);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  opacity: 0;
+  animation: fadeInUp 0.4s ease forwards;
+  animation-delay: calc(var(--i) * 0.05s);
+}
+.carruselCategorias button.active {
+  background-color: black;
+  color: white;
+}
+.serviciosAdmin {
+  padding: 0 10px;
+}
+.servicio-card {
+  display: flex;
+  justify-content: space-between;
+  background-color: whitesmoke;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: var(--sombra-m);
+  opacity: 0;
+  animation: fadeInUp 0.4s ease forwards;
+  animation-delay: calc(var(--i) * 0.05s);
+}
+.infoServicio {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.infoServicio h3 {
+  font-size: large;
+  font-weight: bold;
+}
+.acciones-precio {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.acciones-precio .precio {
+  display: flex;
+  justify-content: end;
+}
+.acciones-precio .editarBorrar {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.acciones-precio .btn-reservar {
+  background-color: rgb(236, 235, 235);
+  padding: 5px 10px;
+  box-shadow: var(--sombra-s);
+  border-radius: 5px;
+}
+.cargar button {
+  padding: 10px;
+  background-color: whitesmoke;
+  border-radius: 10px;
+  box-shadow: var(--sombra-s);
+}
+@media (min-width: 1024px) {
+  .select-tiempo-citas{
+    width: fit-content;
+  }
+  .listaCitas{
+    display: grid;
+    grid-template-columns: repeat(2,1fr);
+  }
+  .gridHoras {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .listaServicios{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+

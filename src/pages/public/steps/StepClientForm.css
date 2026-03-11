@@ -1,0 +1,175 @@
+/* src/pages/public/steps/StepClientForm.css */
+
+.step-client {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* ── Resumen de reserva ── */
+.booking-summary {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.booking-summary__date {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.booking-summary__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.booking-summary__item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.booking-summary__item-name {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+.booking-summary__item-prof {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.booking-summary__item-price {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+}
+
+.booking-summary__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-separator);
+}
+
+.booking-summary__total-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-summary__total-info span:first-child {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.booking-summary__total-duration {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.booking-summary__total-price {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  letter-spacing: -0.5px;
+}
+
+/* ── Formulario ── */
+.client-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.step-client .form-field input {
+  padding: 13px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--color-text-primary);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  width: 100%;
+}
+
+.form-field input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-bg);
+}
+
+.form-field input::placeholder {
+  color: var(--color-text-tertiary);
+  font-weight: 300;
+}
+
+.form-optional {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.form-error {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-error);
+}
+
+.form-submit-error {
+  padding: 12px 14px;
+  background: rgba(192, 57, 43, 0.06);
+  border: 1px solid rgba(192, 57, 43, 0.2);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-error);
+  line-height: 1.5;
+}
+
+.client-form__submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.client-form__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}

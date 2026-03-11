@@ -1,0 +1,8 @@
+Coloca aquí tus iconos PWA reales cuando los tengas:
+- pwa-192x192.png
+- pwa-512x512.png
+- apple-touch-icon.png
+- favicon.ico
+
+Puedes generarlos en https://realfavicongenerator.net subiendo el logo del negocio.
+

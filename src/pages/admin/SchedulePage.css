@@ -1,0 +1,306 @@
+/* src/pages/admin/SchedulePage.css */
+
+.schedule-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-bottom: 48px;
+}
+
+.schedule-loading {
+  padding: 48px 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+/* ── Sección ── */
+.schedule-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.schedule-section__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-text-primary);
+  letter-spacing: -0.3px;
+}
+
+.schedule-section__subtitle {
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+  margin-top: -4px;
+}
+
+/* ── Lista de días ── */
+.days-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.days-list--compact {
+  margin-top: 4px;
+}
+
+/* ── Fila de día ── */
+.day-row {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.day-row--on {
+  border-color: var(--color-accent);
+}
+
+.day-row__toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  text-align: left;
+}
+
+.day-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.day-dot--on {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.day-row__label {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+.day-row--off .day-row__label {
+  color: var(--color-text-tertiary);
+}
+
+.day-row__times {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 10px 38px;
+}
+
+.day-row__break {
+  padding: 0 16px 13px 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-row__break-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  text-align: left;
+  width: fit-content;
+}
+
+.day-row__break-toggle:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.day-row__break-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.day-row__break-times {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Select de hora ── */
+.time-select {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color 0.15s ease;
+}
+
+.time-select:focus {
+  border-color: var(--color-accent);
+}
+
+.time-separator {
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+}
+
+/* ── Botón guardar ── */
+.schedule-save-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* ── Profesionales ── */
+.prof-schedules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.prof-schedule {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  overflow: hidden;
+}
+
+.prof-schedule__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.prof-schedule__info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.prof-schedule__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-surface-2);
+  flex-shrink: 0;
+}
+
+.prof-schedule__avatar--initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-style: italic;
+  color: var(--color-text-tertiary);
+}
+
+.prof-schedule__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.prof-schedule__name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.prof-schedule__hint {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.prof-schedule__chevron {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+.prof-schedule__body {
+  border-top: 1px solid var(--color-separator);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: expandDown 0.15s ease;
+}
+
+@keyframes expandDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Toggle hereda / propio ── */
+.inherit-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.inherit-btn {
+  flex: 1;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.inherit-btn + .inherit-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.inherit-btn--active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-weight: 500;
+}

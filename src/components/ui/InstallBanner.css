@@ -1,0 +1,116 @@
+.install-banner {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 120;
+  padding: 8px 12px 12px;
+  animation: installBannerSlideUp 0.18s ease-out;
+  pointer-events: none;
+}
+
+.install-banner__inner {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.install-banner__info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.install-banner__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: var(--font-display);
+}
+
+.install-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.install-banner__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.install-banner__subtitle {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.install-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.install-banner__btn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-accent-foreground, #fff);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.install-banner__close {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes installBannerSlideUp {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .install-banner__inner {
+    padding-inline: 10px;
+  }
+
+  .install-banner__subtitle {
+    display: none;
+  }
+}
+

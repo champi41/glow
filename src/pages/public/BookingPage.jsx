@@ -1,0 +1,511 @@
+// src/pages/public/BookingPage.jsx
+
+import { useState, useEffect, useMemo } from "react";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { Timestamp } from "firebase/firestore";
+import { parseISO } from "date-fns";
+
+import { useTenant } from "../../hooks/useTenant.js";
+import { useApplyTheme } from "../../hooks/useApplyTheme.js";
+import { useProfessionals } from "../../hooks/useProfessionals.js";
+import { useServices } from "../../hooks/useServices.js";
+import { useBookingsByDate } from "../../hooks/useBookingsByDate.js";
+import { useBlocksByDate } from "../../hooks/useBlocksByDate.js";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { createBooking } from "../../lib/firestore/bookings.js";
+import {
+  calcAvailableSlots,
+  resolveAnyAssignments,
+} from "../../utils/slots.js";
+
+import { ChevronLeft, X } from "lucide-react";
+
+import Spinner from "../../components/ui/Spinner.jsx";
+import StepServices from "./steps/StepServices.jsx";
+import StepProfessional from "./steps/StepProfessional.jsx";
+import StepDate from "./steps/StepDate.jsx";
+import StepTime from "./steps/StepTime.jsx";
+import StepClientForm from "./steps/StepClientForm.jsx";
+import StepConfirmation from "./steps/StepConfirmation.jsx";
+
+import "./BookingPage.css";
+
+// ─── Constantes de pasos ─────────────────────────────────────
+const STEP = {
+  SERVICES: 1,
+  PROFESSIONAL: 2,
+  DATE: 3,
+  TIME: 4,
+  CLIENT: 5,
+  CONFIRMATION: 6,
+};
+
+const STEP_META = {
+  [STEP.SERVICES]: { eyebrow: "Servicios", title: "¿Qué te gustaría?" },
+  [STEP.PROFESSIONAL]: { eyebrow: "Profesional", title: "¿Con quién?" },
+  [STEP.DATE]: { eyebrow: "Fecha", title: "¿Cuándo?" },
+  [STEP.TIME]: { eyebrow: "Hora", title: "Elige tu hora" },
+  [STEP.CLIENT]: { eyebrow: "Tus datos", title: "Casi listo" },
+  [STEP.CONFIRMATION]: { eyebrow: "", title: "¡Reserva confirmada!" },
+};
+
+// Convierte "HH:mm" a minutos desde medianoche
+function timeToMinLocal(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+export default function BookingPage() {
+  const { slug } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // ── Queries base ─────────────────────────────────────────
+  const { data: tenant, isLoading: loadingTenant } = useTenant(slug);
+  const tenantId = tenant?.id;
+
+  useApplyTheme(tenant);
+
+  const { data: professionals = [], isLoading: loadingProfs } =
+    useProfessionals(tenantId);
+  const { data: allServices = [], isLoading: loadingServices } =
+    useServices(tenantId, { activeOnly: true });
+
+  // ── Estado del flujo ──────────────────────────────────────
+  const [currentStep, setCurrentStep] = useState(null); // null hasta inicializar
+  const [selectedServiceIds, setSelectedServiceIds] = useState(new Set());
+  const [assignments, setAssignments] = useState({}); // { serviceId: profId | "any" }
+  const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD"
+  const [selectedSlotData, setSelectedSlotData] = useState(null); // objeto completo de slots.js
+  const [clientData, setClientData] = useState({
+    clientName: "",
+    clientPhone: "",
+    clientEmail: "",
+  });
+  const [confirmedBooking, setConfirmedBooking] = useState(null); // booking guardado
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+  // ── Queries de disponibilidad (solo cuando hay fecha) ────
+  const { data: existingBookings = [] } = useBookingsByDate(
+    tenantId,
+    selectedDate,
+  );
+  const { data: existingBlocks = [] } = useBlocksByDate(tenantId, selectedDate);
+
+  // ── Inicialización desde query params ────────────────────
+  useEffect(() => {
+    if (!allServices.length || !professionals.length) return;
+    if (currentStep !== null) return; // ya inicializado
+
+    const profIdParam = searchParams.get("profId");
+    const servicesParam = searchParams.get("services");
+
+    let initialServiceIds = new Set();
+    let initialAssignments = {};
+    let initialStep = STEP.SERVICES;
+
+    // Si vienen servicios preseleccionados desde ProfessionalPage
+    if (servicesParam) {
+      const ids = servicesParam.split(",").filter(Boolean);
+      initialServiceIds = new Set(ids);
+
+      // Pre-asignar profesional si viene profId
+      if (profIdParam) {
+        for (const id of ids) {
+          const service = allServices.find((s) => s.id === id);
+          if (service?.professionalIds?.includes(profIdParam)) {
+            initialAssignments[id] = profIdParam;
+          }
+        }
+      }
+
+      initialStep = STEP.PROFESSIONAL;
+
+      // Verificar si el paso de profesional es necesario
+      const needsSelection = ids.some((id) => {
+        const service = allServices.find((s) => s.id === id);
+        if (!service) return false;
+        const alreadyAssigned = !!initialAssignments[id];
+        if (alreadyAssigned) return false;
+        const availableProfs = professionals.filter(
+          (p) => p.isActive && service.professionalIds?.includes(p.id),
+        );
+        return availableProfs.length > 1;
+      });
+
+      if (!needsSelection) {
+        // Auto-asignar los que faltan
+        for (const id of ids) {
+          if (initialAssignments[id]) continue;
+          const service = allServices.find((s) => s.id === id);
+          const available = professionals.filter(
+            (p) => p.isActive && service?.professionalIds?.includes(p.id),
+          );
+          if (available.length === 1) {
+            initialAssignments[id] = available[0].id;
+          }
+        }
+        initialStep = STEP.DATE;
+      }
+    }
+
+    setSelectedServiceIds(initialServiceIds);
+    setAssignments(initialAssignments);
+    setCurrentStep(initialStep);
+  }, [allServices, professionals, searchParams, currentStep]);
+
+  // ── Servicios seleccionados (derivado) ───────────────────
+  const selectedServices = useMemo(
+    () => allServices.filter((s) => selectedServiceIds.has(s.id)),
+    [allServices, selectedServiceIds],
+  );
+
+  // ── Slots disponibles (derivado, se recalcula al cambiar fecha/assignments) ─
+  const resolvedAssignments = useMemo(() => {
+    if (!selectedDate || !selectedServices.length) return {};
+    return resolveAnyAssignments(
+      assignments,
+      selectedServices,
+      professionals,
+      existingBookings,
+    );
+  }, [
+    assignments,
+    selectedServices,
+    professionals,
+    existingBookings,
+    selectedDate,
+  ]);
+
+  const availableSlots = useMemo(() => {
+    if (
+      !selectedDate ||
+      !selectedServices.length ||
+      !Object.keys(resolvedAssignments).length
+    )
+      return [];
+
+    const slots = calcAvailableSlots({
+      date: selectedDate,
+      tenant,
+      assignments: resolvedAssignments,
+      selectedServices,
+      professionals,
+      existingBookings,
+      existingBlocks,
+    });
+
+    // Si la fecha seleccionada es hoy, filtrar horas que ya pasaron
+    const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    if (selectedDate === todayStr) {
+      const now = new Date();
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      return slots.filter(
+        (slot) => timeToMinLocal(slot.startTime) >= nowMinutes,
+      );
+    }
+
+    return slots;
+  }, [
+    selectedDate,
+    resolvedAssignments,
+    selectedServices,
+    tenant,
+    professionals,
+    existingBookings,
+    existingBlocks,
+  ]);
+
+  // ── Pasos activos (para los dots de progreso) ────────────
+  const activeSteps = useMemo(() => {
+    const steps = [];
+    if (!searchParams.get("services")) steps.push(STEP.SERVICES);
+
+    const needsProfStep = selectedServices.some((service) => {
+      const available = professionals.filter(
+        (p) => p.isActive && service.professionalIds?.includes(p.id),
+      );
+      return available.length > 1;
+    });
+    if (needsProfStep || !searchParams.get("services"))
+      steps.push(STEP.PROFESSIONAL);
+
+    steps.push(STEP.DATE, STEP.TIME, STEP.CLIENT, STEP.CONFIRMATION);
+    return steps;
+  }, [selectedServices, professionals, searchParams]);
+
+  // ── Handlers ─────────────────────────────────────────────
+
+  function handleToggleService(serviceId) {
+    setSelectedServiceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(serviceId)) {
+        next.delete(serviceId);
+        // Limpiar assignment si se deselecciona
+        setAssignments((a) => {
+          const na = { ...a };
+          delete na[serviceId];
+          return na;
+        });
+      } else {
+        next.add(serviceId);
+      }
+      return next;
+    });
+  }
+
+  function handleAssign(serviceId, profId) {
+    setAssignments((prev) => ({ ...prev, [serviceId]: profId }));
+  }
+
+  function handleSelectDate(dateStr) {
+    setSelectedDate(dateStr);
+    setSelectedSlotData(null); // resetear slot al cambiar fecha
+    setCurrentStep(STEP.TIME);
+  }
+
+  function handleSelectSlot(slotData) {
+    setSelectedSlotData(slotData);
+  }
+
+  function handleBack() {
+    if (currentStep === STEP.CONFIRMATION) return;
+    if (
+      currentStep <= STEP.SERVICES ||
+      (currentStep === STEP.PROFESSIONAL && !searchParams.get("services"))
+    ) {
+      navigate(`/${slug}`);
+      return;
+    }
+    // Buscar el paso anterior en activeSteps
+    const idx = activeSteps.indexOf(currentStep);
+    if (idx > 0) setCurrentStep(activeSteps[idx - 1]);
+    else navigate(`/${slug}`);
+  }
+
+  function handleContinueFromServices() {
+    // Auto-asignar servicios con un solo profesional disponible
+    const autoAssignments = {};
+    for (const service of selectedServices) {
+      const available = professionals.filter(
+        (p) => p.isActive && service.professionalIds?.includes(p.id),
+      );
+      if (available.length === 1) {
+        autoAssignments[service.id] = available[0].id;
+      }
+    }
+    setAssignments((prev) => ({ ...autoAssignments, ...prev }));
+
+    // Verificar si necesita paso de profesional
+    const needsProf = selectedServices.some((service) => {
+      if (autoAssignments[service.id] || assignments[service.id]) return false;
+      const available = professionals.filter(
+        (p) => p.isActive && service.professionalIds?.includes(p.id),
+      );
+      return available.length > 1;
+    });
+
+    setCurrentStep(needsProf ? STEP.PROFESSIONAL : STEP.DATE);
+  }
+
+  function handleContinueFromProfessional() {
+    setCurrentStep(STEP.DATE);
+  }
+
+  function handleContinueFromTime() {
+    if (selectedSlotData) setCurrentStep(STEP.CLIENT);
+  }
+
+  async function handleConfirm(formData) {
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      // Construir items desde selectedSlotData.order
+      const items = selectedSlotData.order.flatMap((group) =>
+        group.services.map((service) => {
+          const prof = professionals.find((p) => p.id === group.profId);
+          return {
+            serviceId: service.id,
+            serviceName: service.name,
+            professionalId: group.profId,
+            professionalName: prof?.name || "",
+            professionalSlug: prof?.slug || "",
+            startTime: group.start,
+            endTime: group.end,
+            price: service.price,
+            duration: service.duration,
+          };
+        }),
+      );
+
+      const booking = {
+        clientName: formData.clientName.trim(),
+        clientPhone: formData.clientPhone.trim(),
+        clientEmail: formData.clientEmail?.trim() || "",
+        date: Timestamp.fromDate(parseISO(selectedDate)),
+        dateStr: selectedDate,
+        status: "pending",
+        createdAt: Timestamp.now(),
+        notes: "",
+        items,
+        totalPrice: items.reduce((s, i) => s + i.price, 0),
+        totalDuration: items.reduce((s, i) => s + i.duration, 0),
+      };
+
+      const bookingId = await createBooking(tenantId, booking);
+
+      // Invalidar queries para que la agenda del admin se actualice
+      queryClient.invalidateQueries({
+        queryKey: ["bookings-date", tenantId, selectedDate],
+      });
+
+      setConfirmedBooking({ id: bookingId, ...booking });
+      setCurrentStep(STEP.CONFIRMATION);
+    } catch (err) {
+      console.error("Error al crear reserva:", err);
+      setSubmitError(
+        "Ocurrió un error al guardar tu reserva. Intenta nuevamente.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // ── Loading inicial ───────────────────────────────────────
+  if (
+    loadingTenant ||
+    loadingProfs ||
+    loadingServices ||
+    currentStep === null
+  ) {
+    return <Spinner />;
+  }
+
+  if (!tenant) {
+    return (
+      <div className="booking-not-found">
+        <p>Negocio no encontrado.</p>
+      </div>
+    );
+  }
+
+  const stepMeta = STEP_META[currentStep];
+  const currentIndex = activeSteps.indexOf(currentStep);
+
+  // ── Render ────────────────────────────────────────────────
+  return (
+    <div className="booking-page">
+      {/* Header con progreso */}
+      <header className="booking-header">
+        <button
+          className="booking-header__btn"
+          onClick={handleBack}
+          aria-label="Volver"
+        >
+          <ChevronLeft size={20} aria-hidden="true" />
+        </button>
+
+        <div className="booking-progress">
+          {activeSteps.map((step, i) => (
+            <div
+              key={step}
+              className={[
+                "progress-dot",
+                i < currentIndex ? "progress-dot--done" : "",
+                i === currentIndex ? "progress-dot--active" : "",
+              ].join(" ")}
+            />
+          ))}
+        </div>
+
+        <button
+          className="booking-header__btn"
+          onClick={() => navigate(`/${slug}`)}
+          aria-label="Cerrar"
+        >
+          <X size={20} aria-hidden="true" />
+        </button>
+      </header>
+
+      {/* Contenido del paso */}
+      <div className="booking-content">
+        {currentStep !== STEP.CONFIRMATION && (
+          <div className="booking-step-title">
+            {stepMeta.eyebrow && (
+              <p className="section-eyebrow">{stepMeta.eyebrow}</p>
+            )}
+            <h2 className="section-title">{stepMeta.title}</h2>
+          </div>
+        )}
+
+        {currentStep === STEP.SERVICES && (
+          <StepServices
+            services={allServices}
+            selectedServiceIds={selectedServiceIds}
+            onToggle={handleToggleService}
+            onContinue={handleContinueFromServices}
+          />
+        )}
+
+        {currentStep === STEP.PROFESSIONAL && (
+          <StepProfessional
+            selectedServices={selectedServices}
+            professionals={professionals}
+            assignments={assignments}
+            onAssign={handleAssign}
+            onContinue={handleContinueFromProfessional}
+            onBack={handleBack}
+          />
+        )}
+
+        {currentStep === STEP.DATE && (
+          <StepDate
+            tenant={tenant}
+            professionals={professionals}
+            assignments={assignments}
+            selectedServices={selectedServices}
+            selectedDate={selectedDate}
+            onSelectDate={handleSelectDate}
+          />
+        )}
+
+        {currentStep === STEP.TIME && (
+          <StepTime
+            availableSlots={availableSlots}
+            selectedSlotData={selectedSlotData}
+            onSelectSlot={handleSelectSlot}
+            onContinue={handleContinueFromTime}
+            onChangeDate={() => setCurrentStep(STEP.DATE)}
+            onChangeProfessional={() => setCurrentStep(STEP.PROFESSIONAL)}
+            isLoading={!selectedDate}
+          />
+        )}
+
+        {currentStep === STEP.CLIENT && (
+          <StepClientForm
+            selectedSlotData={selectedSlotData}
+            selectedDate={selectedDate}
+            selectedServices={selectedServices}
+            professionals={professionals}
+            onConfirm={handleConfirm}
+            isSubmitting={isSubmitting}
+            submitError={submitError}
+          />
+        )}
+
+        {currentStep === STEP.CONFIRMATION && confirmedBooking && (
+          <StepConfirmation
+            booking={confirmedBooking}
+            tenant={tenant}
+            slug={slug}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

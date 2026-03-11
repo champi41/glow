@@ -1,0 +1,129 @@
+.hero{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hero__cover-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero__cover-img {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  animation: heroZoom 1s ease forwards;
+}
+
+.hero__cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 50%,
+    var(--color-bg) 100%
+  );
+}
+
+@keyframes heroZoom {
+  from {
+    transform: scale(1.1);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.hero__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 15px;
+}
+
+.hero__title-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.hero__logo {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(36px, 7vw, 64px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: var(--color-text-primary);
+}
+
+.hero__title em {
+  font-style: italic;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.hero__description {
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
+/* Carrusel de botones (ubicación, teléfono, Instagram, horario) */
+.hero__info {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.hero__info::-webkit-scrollbar {
+  display: none;
+}
+
+.hero__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: var(--font-body);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.hero__pill:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.hero__pill-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+@media (min-width: 480px) {
+  .hero__pill-text {
+    max-width: 220px;
+  }
+}

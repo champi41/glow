@@ -1,0 +1,142 @@
+/* ATELIER — Variables */
+:root {
+  --color-bg: #faf8f5;
+  --color-bg-elevated: #ffffff;
+  --color-surface: #f2efe9;
+  --color-surface-2: #ebe7e0;
+  --color-border: rgba(26, 26, 26, 0.1);
+  --color-separator: rgba(26, 26, 26, 0.07);
+
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #6b6560;
+  --color-text-tertiary: #a09890;
+
+  --color-accent: #c17b5c;
+  --color-accent-hover: #a8674b;
+  --color-accent-bg: rgba(193, 123, 92, 0.08);
+  --color-accent-text: #ffffff;
+
+  --color-success: #4a7c59;
+  --color-warning: #c9963a;
+  --color-error: #c0392b;
+  --color-warning: #c9963a;
+  --color-success: #4a7c59;
+  --color-error: #c0392b;
+  --color-separator: rgba(0, 0, 0, 0.06);
+  --color-surface-2: rgba(0, 0, 0, 0.04);
+  --color-accent-bg: rgba(193, 123, 92, 0.08);
+  --color-border: rgba(0, 0, 0, 0.1);
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "DM Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "DM Mono", "Fira Code", monospace;
+
+  --max-width: 740px;
+  --page-padding: 24px;
+
+  --shadow-sm: 0 1px 3px rgba(26, 26, 26, 0.06);
+  --shadow-md: 0 4px 20px rgba(26, 26, 26, 0.07);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+/* Botones globales */
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.btn-outline:hover {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.btn-outline .btn-arrow {
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+.btn-outline:hover .btn-arrow {
+  transform: translateX(3px);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  width: 100%;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-hover);
+  transform: translateY(-1px);
+}

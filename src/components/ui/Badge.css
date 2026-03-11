@@ -1,0 +1,20 @@
+.badge {
+  display: inline-block;
+  font-family: var(--font-system);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+.badge--owner {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.badge--default {
+  background-color: var(--color-surface-2);
+  color: var(--color-text-secondary);
+}

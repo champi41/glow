@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users: solo el propio usuario puede leer su doc
+    match /users/{uid} {
+      allow read, write: if request.auth.uid == uid;
+    }
+
+    // Tenants: lectura pública, escritura solo autenticados del tenant
+    match /tenants/{tenantId} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+
+      // Professionals: lectura pública
+      match /professionals/{profId} {
+        allow read: if true;
+        allow write: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+      }
+
+      // Services: lectura pública
+      match /services/{serviceId} {
+        allow read: if true;
+        allow write: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+      }
+
+      // Bookings: get público (link de reseña carga 1 booking por id); list/update/delete solo admin
+      match /bookings/{bookingId} {
+        allow get: if true;
+        allow list, update, delete: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+        allow create: if true;
+      }
+
+      // Reseñas: cualquiera puede leer (comprobar si ya hay reseña) y crear (enviar reseña)
+      // Solo usuarios del tenant pueden actualizar/eliminar (admin aprueba/rechaza)
+      match /reviews/{reviewId} {
+        allow read, create: if true;
+        allow update, delete: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+      }
+
+      // Blocks: solo autenticados del tenant
+      match /blocks/{blockId} {
+        allow read, write: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+      }
+    }
+  }
+}

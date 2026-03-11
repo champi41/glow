@@ -1,0 +1,18 @@
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.business-page--loading .spinner {
+  margin: 0 auto;
+}
