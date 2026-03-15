@@ -1,4 +1,4 @@
-import { collection, getDocsFromServer,  query, where } from "firebase/firestore";
+import { collection, getDocs,  query, where } from "firebase/firestore";
 import { db } from "../../config/firebase.js";
 
 /**
@@ -10,6 +10,6 @@ import { db } from "../../config/firebase.js";
 export async function getBlocksByDate(tenantId, dateStr) {
   const blocksRef = collection(db, "tenants", tenantId, "blocks");
   const q = query(blocksRef, where("dateStr", "==", dateStr));
-  const snapshot = await getDocsFromServer(q); // ← cambio
+  const snapshot = await getDocs(q); // ← cambio
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }

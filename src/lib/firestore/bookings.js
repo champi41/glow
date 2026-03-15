@@ -1,6 +1,6 @@
 import {
   collection,
-  getDocsFromServer,
+  getDocs,
   addDoc,
   query,
   where,
@@ -19,7 +19,7 @@ export async function getBookingsByDate(tenantId, dateStr) {
   const q = query(bookingsRef, where("dateStr", "==", dateStr));
 
   try {
-    const snapshot = await getDocsFromServer(q);
+    const snapshot = await getDocs(q);
     console.log("[firestore] snapshot size:", snapshot.size);
     snapshot.docs.forEach((d) =>
       console.log("[firestore] doc:", d.id, d.data().dateStr, d.data().status),
