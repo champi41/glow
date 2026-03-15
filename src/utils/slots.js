@@ -82,12 +82,18 @@ function overlapsBreak(startMin, endMin, breaks) {
 }
 
 // ─── Rangos ocupados por profesional ────────────────────────
+// Solo reservas que ocupan el slot: pending y confirmed. Cancelled y completed no bloquean.
+function isBookingOccupying(status) {
+  if (status === "cancelled" || status === "completed") return false;
+  return true; // pending, confirmed o undefined (compatibilidad)
+}
 
 function buildOccupied(profIds, existingBookings, existingBlocks) {
   const occupied = {};
   for (const pid of profIds) occupied[pid] = [];
 
   for (const booking of existingBookings) {
+    if (!isBookingOccupying(booking.status)) continue;
     for (const item of booking.items || []) {
       const pid = item.professionalId;
       if (!occupied[pid]) continue;
@@ -315,9 +321,10 @@ export function resolveAnyAssignments(
 ) {
   const resolved = { ...assignments };
 
-  // Contar reservas por profesional ese día
+  // Contar reservas que ocupan el slot por profesional (pending/confirmed)
   const bookingCount = {};
   for (const booking of existingBookings) {
+    if (!isBookingOccupying(booking.status)) continue;
     for (const item of booking.items || []) {
       const pid = item.professionalId;
       bookingCount[pid] = (bookingCount[pid] || 0) + 1;
