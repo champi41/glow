@@ -203,6 +203,14 @@
   flex-shrink: 0;
 }
 
+.booking-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
 .booking-card__price {
   font-family: var(--font-mono);
   font-size: 13px;
@@ -317,6 +325,40 @@
 
 .booking-detail__whatsapp:hover {
   opacity: 0.75;
+}
+
+/* ── Abono ── */
+.booking-detail__deposit-pending {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.booking-detail__proof-link {
+  display: block;
+  margin-bottom: 10px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.booking-detail__proof-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.booking-detail__deposit-verified {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-success);
+  margin: 0;
+}
+
+.booking-detail__whatsapp-btn {
+  text-decoration: none;
 }
 
 /* ── Acciones ── */

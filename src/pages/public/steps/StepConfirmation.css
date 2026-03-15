@@ -163,6 +163,61 @@
   font-family: var(--font-mono);
 }
 
+/* ── Abono ── */
+.confirmation__deposit {
+  width: 100%;
+  max-width: 360px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: left;
+}
+
+.confirmation__deposit-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-accent);
+  margin: 0 0 8px 0;
+}
+
+.confirmation__deposit-amount {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 12px 0;
+}
+
+.confirmation__deposit-bank {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.confirmation__deposit-bank p {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.confirmation__deposit-hint {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+.confirmation__status-btn {
+  width: 100%;
+  max-width: 320px;
+  justify-content: center;
+}
+
 /* ── Acciones ── */
 .confirmation__actions {
   display: flex;

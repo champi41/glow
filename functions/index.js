@@ -109,3 +109,42 @@ exports.onBookingCancelled = onDocumentUpdated(
     return null;
   },
 );
+
+// ─── Trigger: cliente subió comprobante de abono ──────────────
+exports.onDepositProofUploaded = onDocumentUpdated(
+  "tenants/{tenantId}/bookings/{bookingId}",
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    const tenantId = event.params.tenantId;
+
+    if (before.depositStatus === after.depositStatus) return null;
+    if (after.depositStatus !== "uploaded") return null;
+
+    const profIds = [
+      ...new Set(
+        (after.items || []).map((i) => i.professionalId).filter(Boolean),
+      ),
+    ];
+
+    const serviceNames = (after.items || [])
+      .map((i) => i.serviceName)
+      .join(", ");
+    const timeStr = after.items?.[0]?.startTime || "";
+
+    for (const profId of profIds) {
+      const subscription = await getPushSubscription(tenantId, profId);
+      if (!subscription) continue;
+
+      await sendPushNotification(subscription, {
+        title: "📎 Comprobante de abono",
+        body: `${after.clientName} subió el comprobante · ${serviceNames} a las ${timeStr}`,
+        icon: "/pwa-192x192.png",
+        badge: "/pwa-192x192.png",
+        data: { url: "/admin/reservas" },
+      });
+    }
+
+    return null;
+  },
+);

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { getFirstName } from "../../utils/format.js";
 import "./ProfessionalCard.css";
 
@@ -29,7 +29,7 @@ export default function ProfessionalCard({ professional, tenantSlug }) {
             {bio && <p className="prof-card__bio">{bio}</p>}
           </div>
           <span className="prof-card__link">
-            Reservar con {getFirstName(name)} <ArrowRight size={13} aria-hidden="true" />
+            Reservar con {getFirstName(name)} <ChevronRight size={13} aria-hidden="true" />
           </span>
         </div>
       </Link>

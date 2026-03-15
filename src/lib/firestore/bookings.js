@@ -15,13 +15,55 @@ export async function getBookingsByDate(tenantId, dateStr) {
 }
 
 /**
+ * Calcula campos de abono según configuración del tenant.
+ * @param {object} tenantDeposit - tenant.deposit (puede ser undefined)
+ * @param {object} bookingData - { items: Array<{ depositAmount?: number }>, ... }
+ * @returns {{ depositRequired: boolean, depositAmount: number, depositStatus: string, depositProofUrl: null }}
+ */
+function getDepositFields(tenantDeposit, bookingData) {
+  const defaultFields = {
+    depositRequired: false,
+    depositAmount: 0,
+    depositStatus: "none",
+    depositProofUrl: null,
+  };
+  if (!tenantDeposit?.enabled) return defaultFields;
+
+  let amount = 0;
+  if (tenantDeposit.type === "fixed" && typeof tenantDeposit.amount === "number") {
+    amount = tenantDeposit.amount;
+  } else if (tenantDeposit.type === "per_service" && Array.isArray(bookingData.items)) {
+    amount = bookingData.items.reduce((s, i) => s + (Number(i.depositAmount) || 0), 0);
+  }
+
+  return {
+    depositRequired: amount > 0,
+    depositAmount: amount,
+    depositStatus: amount > 0 ? "pending" : "none",
+    depositProofUrl: null,
+  };
+}
+
+/**
  * Create a booking document in the tenant's bookings subcollection.
+ * Incluye campos de abono calculados según tenant.deposit.
  * @param {string} tenantId
  * @param {object} bookingData
- * @returns {Promise<string>} Document ID
+ * @param {object} [tenantDeposit] - tenant.deposit (opcional)
+ * @returns {Promise<{ id: string, depositRequired: boolean, depositAmount: number, depositStatus: string }>}
  */
-export async function createBooking(tenantId, bookingData) {
+export async function createBooking(tenantId, bookingData, tenantDeposit) {
+  const depositFields = getDepositFields(tenantDeposit, bookingData);
+  const payload = {
+    ...bookingData,
+    ...depositFields,
+  };
   const bookingsRef = collection(db, "tenants", tenantId, "bookings");
-  const docRef = await addDoc(bookingsRef, bookingData);
-  return docRef.id;
+  const docRef = await addDoc(bookingsRef, payload);
+  return {
+    id: docRef.id,
+    depositRequired: depositFields.depositRequired,
+    depositAmount: depositFields.depositAmount,
+    depositStatus: depositFields.depositStatus,
+  };
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { MapPin } from "lucide-react";
+import { MapPin, ArrowRight, ChevronRight } from "lucide-react";
 import { useTenant } from "../../hooks/useTenant.js";
 import { useApplyTheme } from "../../hooks/useApplyTheme.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
@@ -9,12 +9,19 @@ import { useApprovedReviews } from "../../hooks/useReviews.js";
 import Spinner from "../../components/ui/Spinner.jsx";
 import BusinessHero from "../../components/public/BusinessHero.jsx";
 import ProfessionalCard from "../../components/public/ProfessionalCard.jsx";
-import ServiceList from "../../components/public/ServiceList.jsx";
 import "./BusinessPage.css";
 
 const STAR_COLOR = "#f4b942";
 
-const WEEK_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const WEEK_KEYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 const DAY_LABELS_FULL = {
   monday: "Lunes",
   tuesday: "Martes",
@@ -62,10 +69,11 @@ export default function BusinessPage() {
   const { data: services = [] } = useServices(tenant?.id, { activeOnly: true });
   const { data: reviews = [] } = useApprovedReviews(tenant?.id);
   const hasReviews = reviews.length > 0;
-  const avgRating =
-    hasReviews
-      ? (reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length).toFixed(1)
-      : null;
+  const avgRating = hasReviews
+    ? (
+        reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / reviews.length
+      ).toFixed(1)
+    : null;
 
   const isLoading = tenantLoading;
   const businessHours = tenant?.businessHours || null;
@@ -86,7 +94,12 @@ export default function BusinessPage() {
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
-          { headers: { "Accept-Language": "es", "User-Agent": "ReservasApp/1.0" } }
+          {
+            headers: {
+              "Accept-Language": "es",
+              "User-Agent": "ReservasApp/1.0",
+            },
+          },
         );
         if (cancelled) return;
         const data = await res.json();
@@ -101,7 +114,9 @@ export default function BusinessPage() {
         if (!cancelled) setMapCoords(null);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [showLocationHours, address]);
 
   if (tenantError || (!tenantLoading && !tenant)) {
@@ -125,9 +140,19 @@ export default function BusinessPage() {
       <BusinessHero
         tenant={tenant}
         slug={slug}
-        onOpenLocationHours={hasLocationOrHours ? () => setShowLocationHours(true) : null}
+        onOpenLocationHours={
+          hasLocationOrHours ? () => setShowLocationHours(true) : null
+        }
       />
-
+      <section className="page-section page-cta">
+        <button
+          type="button"
+          className="btn-primary services-cta__btn"
+          onClick={() => navigate(`/${slug}/reservar`)}
+        >
+          Ver servicios <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </section>
       <section className="page-section">
         <div className="section-header">
           <h2 className="section-title">Nuestros profesionales</h2>
@@ -144,21 +169,32 @@ export default function BusinessPage() {
           <div className="section-header">
             <h2 className="section-title">Lo que dicen nuestros clientes</h2>
             <p className="reviews-section__summary">
-              ★ {avgRating} · {reviews.length} reseña{reviews.length !== 1 ? "s" : ""}
+              ★ {avgRating} · {reviews.length} reseña
+              {reviews.length !== 1 ? "s" : ""}
             </p>
           </div>
           <div className="reviews-carousel">
             {reviews.map((r) => {
-              const proDisplay = (Array.isArray(r.professionalNames) && r.professionalNames.length > 0)
-                ? r.professionalNames.join(", ")
-                : r.professionalName;
+              const proDisplay =
+                Array.isArray(r.professionalNames) &&
+                r.professionalNames.length > 0
+                  ? r.professionalNames.join(", ")
+                  : r.professionalName;
               return (
                 <div key={r.id} className="reviews-carousel__card">
-                  <div className="reviews-carousel__stars" aria-label={`${r.rating} estrellas`}>
+                  <div
+                    className="reviews-carousel__stars"
+                    aria-label={`${r.rating} estrellas`}
+                  >
                     {[1, 2, 3, 4, 5].map((i) => (
                       <span
                         key={i}
-                        style={{ color: i <= r.rating ? STAR_COLOR : "var(--color-text-tertiary)" }}
+                        style={{
+                          color:
+                            i <= r.rating
+                              ? STAR_COLOR
+                              : "var(--color-text-tertiary)",
+                        }}
                       >
                         ★
                       </span>
@@ -173,7 +209,8 @@ export default function BusinessPage() {
                     </p>
                   )}
                   <p className="reviews-carousel__meta">
-                    {r.clientName}{proDisplay ? ` · ${proDisplay}` : ""}
+                    {r.clientName}
+                    {proDisplay ? ` · ${proDisplay}` : ""}
                   </p>
                 </div>
               );
@@ -182,22 +219,6 @@ export default function BusinessPage() {
         </section>
       )}
 
-      <section className="page-section page-cta">
-        <div className="page-cta__inner">
-          <div className="page-cta__text">
-            <h2 className="page-cta__title">
-              Reserva o revisa nuestros servicios
-            </h2>
-          </div>
-          <button
-            type="button"
-            className="services-cta__btn"
-            onClick={() => navigate(`/${slug}/reservar`)}
-          >
-            Ver servicios
-          </button>
-        </div>
-      </section>
       <footer className="site-footer">
         <p>
           {tenant.name} · {tenant.address}
@@ -215,7 +236,9 @@ export default function BusinessPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="location-hours-modal__header">
-              <h2 className="location-hours-modal__title">Ubicación y horario</h2>
+              <h2 className="location-hours-modal__title">
+                Ubicación y horario
+              </h2>
               <button
                 type="button"
                 className="location-hours-modal__close"
@@ -274,7 +297,9 @@ export default function BusinessPage() {
                       const close = day?.close;
                       return (
                         <li key={key} className="location-hours-list__row">
-                          <span className="location-hours-list__day">{label}</span>
+                          <span className="location-hours-list__day">
+                            {label}
+                          </span>
                           <span className="location-hours-list__time">
                             {isOpen ? `${open} – ${close}` : "Cerrado"}
                           </span>

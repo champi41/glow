@@ -1,0 +1,335 @@
+/* src/pages/public/BookingStatusPage.css */
+
+.booking-status-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  padding: var(--page-padding);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.booking-status-page__inner {
+  width: 100%;
+  max-width: 420px;
+}
+
+.booking-status-page--loading,
+.booking-status-page--error {
+  justify-content: center;
+}
+
+.booking-status-page__message {
+  font-family: var(--font-body);
+  font-size: 17px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Header */
+.booking-status-page__header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.booking-status-page__logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+
+.booking-status-page__title {
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0 0 4px 0;
+}
+
+.booking-status-page__subtitle {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+/* Sección estado */
+.booking-status__section {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.booking-status__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.booking-status__badge:last-child {
+  margin-bottom: 0;
+}
+
+.booking-status__badge--warning {
+  background: rgba(201, 150, 58, 0.12);
+  color: var(--color-warning);
+}
+
+.booking-status__badge--success {
+  background: rgba(74, 124, 89, 0.12);
+  color: var(--color-success);
+}
+
+.booking-status__badge--error {
+  background: rgba(192, 57, 43, 0.12);
+  color: var(--color-error);
+}
+
+.booking-status__badge--accent {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.booking-status__badge--info {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+}
+
+.booking-status__deposit-badge {
+  display: block;
+  margin-top: 8px;
+}
+
+.booking-status__badge-icon {
+  font-size: 20px;
+}
+
+/* Detalles (mismo estilo que StepConfirmation) */
+.booking-status__details {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.booking-status__date {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.booking-status__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.booking-status__item:last-of-type {
+  border-bottom: none;
+}
+
+.booking-status__item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-status__item-name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.booking-status__item-meta {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.booking-status__item-price {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.booking-status__total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.booking-status__total-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booking-status__total-left span:first-child {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.booking-status__total-duration {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.booking-status__total-price {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Abono */
+.booking-status__deposit {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.booking-status__deposit-card {
+  margin-bottom: 16px;
+}
+
+.booking-status__deposit-amount {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 12px 0;
+}
+
+.booking-status__deposit-bank {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.booking-status__deposit-bank p {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.booking-status__file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.booking-status__upload-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.booking-status__preview-wrap {
+  margin-top: 12px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.booking-status__preview {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.booking-status__upload-error {
+  font-size: 13px;
+  color: var(--color-error);
+  margin: 10px 0 0 0;
+}
+
+.booking-status__proof-wrap {
+  margin-bottom: 12px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.booking-status__proof-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.booking-status__deposit-uploaded-text {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.booking-status__whatsapp-btn {
+  width: 100%;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.booking-status__deposit-verified {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-success);
+  margin: 0;
+}
+
+.booking-status__actions {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.booking-status__ics {
+  width: 100%;
+  justify-content: center;
+}
+
+.booking-status__cancel {
+  width: 100%;
+  justify-content: center;
+  color: var(--color-error);
+  border-color: rgba(192, 57, 43, 0.4);
+  background: rgba(192, 57, 43, 0.06);
+}
+
+.booking-status__cancel:hover:not(:disabled) {
+  border-color: var(--color-error);
+  background: rgba(192, 57, 43, 0.12);
+}
+
+.booking-status__cancel-error {
+  font-size: 13px;
+  color: var(--color-error);
+  margin: 0;
+}

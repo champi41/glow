@@ -47,7 +47,13 @@ const FILTER_LABEL = {
 };
 
 // ─── Componente de reserva ────────────────────────────────────
-function BookingCard({ booking, professionals, onUpdateStatus, tenantSlug }) {
+function BookingCard({
+  booking,
+  professionals,
+  onUpdateStatus,
+  onMarkDepositVerified,
+  tenantSlug,
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const firstItem = booking.items?.[0];
@@ -82,9 +88,16 @@ function BookingCard({ booking, professionals, onUpdateStatus, tenantSlug }) {
         </div>
 
         <div className="booking-card__right">
-          <span className={`badge ${STATUS_CLASS[booking.status]}`}>
-            {STATUS_LABEL[booking.status]}
-          </span>
+          <div className="booking-card__badges">
+            <span className={`badge ${STATUS_CLASS[booking.status]}`}>
+              {STATUS_LABEL[booking.status]}
+            </span>
+            {booking.depositStatus === "uploaded" && (
+              <span className="badge badge--warning booking-card__deposit-badge">
+                📎 Comprobante
+              </span>
+            )}
+          </div>
           <span className="booking-card__price">
             {formatPrice(booking.totalPrice)}
           </span>
@@ -121,7 +134,7 @@ function BookingCard({ booking, professionals, onUpdateStatus, tenantSlug }) {
             ))}
           </div>
 
-          {/* Cliente - ERROR CORREGIDO AQUÍ */}
+          {/* Cliente */}
           <div className="booking-detail__section">
             <p className="booking-detail__label">Cliente</p>
             <div className="booking-detail__client">
@@ -139,7 +152,71 @@ function BookingCard({ booking, professionals, onUpdateStatus, tenantSlug }) {
             </div>
           </div>
 
-          {/* Acciones según estado */}
+          {/* Abono */}
+          {booking.depositRequired === true && (
+            <div className="booking-detail__section">
+              <p className="booking-detail__label">Abono</p>
+              {booking.depositStatus === "pending" && (
+                <p className="booking-detail__deposit-pending">
+                  Esperando comprobante del cliente.
+                </p>
+              )}
+              {booking.depositStatus === "uploaded" && (
+                <>
+                  <a
+                    href={booking.depositProofUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="booking-detail__proof-link"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <img
+                      src={booking.depositProofUrl}
+                      alt="Comprobante"
+                      className="booking-detail__proof-img"
+                    />
+                  </a>
+                  <div className="booking-detail__actions">
+                    <button
+                      className="action-btn action-btn--cancel"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdateStatus(booking.id, "cancelled");
+                      }}
+                    >
+                      <XCircle size={15} /> Cancelar
+                    </button>
+                    <a
+                      href={`https://wa.me/${booking.clientPhone?.replace(/\D/g, "")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="action-btn booking-detail__whatsapp-btn"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Phone size={15} /> Contactar cliente
+                    </a>
+                    <button
+                      className="action-btn action-btn--confirm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMarkDepositVerified(booking.id);
+                      }}
+                    >
+                      <CheckCircle2 size={15} /> Marcar abono verificado
+                    </button>
+                  </div>
+                </>
+              )}
+              {booking.depositStatus === "verified" && (
+                <p className="booking-detail__deposit-verified">
+                  ✅ Abono verificado
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Acciones según estado (ocultar si abono uploaded: ya hay acciones en sección Abono) */}
+          {!(booking.depositRequired && booking.depositStatus === "uploaded") && (
           <div className="booking-detail__actions">
             {booking.status === "pending" && (
               <>
@@ -194,6 +271,7 @@ function BookingCard({ booking, professionals, onUpdateStatus, tenantSlug }) {
               </p>
             )}
           </div>
+          )}
 
           {booking.status === "completed" && tenantSlug && (
             <a
@@ -260,7 +338,22 @@ export default function BookingsPage() {
       });
     } catch (err) {
       console.error("Error al actualizar reserva:", err);
-      // Evitar alert() en entornos de producción si es posible, usar un toast o modal.
+    }
+  }
+
+  // Marcar abono verificado y confirmar reserva
+  async function handleMarkDepositVerified(bookingId) {
+    if (!tenantId) return;
+    try {
+      await updateDoc(doc(db, "tenants", tenantId, "bookings", bookingId), {
+        depositStatus: "verified",
+        status: "confirmed",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bookings-date", tenantId, selectedDate],
+      });
+    } catch (err) {
+      console.error("Error al marcar abono verificado:", err);
     }
   }
 
@@ -327,6 +420,7 @@ export default function BookingsPage() {
                 booking={booking}
                 professionals={professionals}
                 onUpdateStatus={handleUpdateStatus}
+                onMarkDepositVerified={handleMarkDepositVerified}
                 tenantSlug={tenantSlug}
               />
             ))}

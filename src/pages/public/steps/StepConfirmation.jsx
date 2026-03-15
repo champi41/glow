@@ -10,6 +10,7 @@ import "./StepConfirmation.css";
 
 export default function StepConfirmation({ booking, tenant, slug }) {
   const navigate = useNavigate();
+  const bank = tenant?.deposit?.bankInfo;
 
   const formattedDate = booking.dateStr
     ? format(parseISO(booking.dateStr), "EEEE d 'de' MMMM 'de' yyyy", {
@@ -81,8 +82,36 @@ export default function StepConfirmation({ booking, tenant, slug }) {
         </div>
       </div>
 
+      {/* Abono requerido */}
+      {booking.depositRequired === true && bank && (
+        <div className="confirmation__deposit">
+          <h3 className="confirmation__deposit-title">Abono requerido</h3>
+          <p className="confirmation__deposit-amount">
+            {formatPrice(booking.depositAmount)}
+          </p>
+          <div className="confirmation__deposit-bank">
+            {bank.bank && <p>{bank.bank}</p>}
+            {bank.accountType && <p>{bank.accountType}</p>}
+            {bank.accountNumber && <p>{bank.accountNumber}</p>}
+            {bank.rut && <p>RUT: {bank.rut}</p>}
+            {bank.holderName && <p>{bank.holderName}</p>}
+          </div>
+          <p className="confirmation__deposit-hint">
+            Transfiere el abono y sube el comprobante para confirmar tu reserva.
+          </p>
+        </div>
+      )}
+
       {/* Acciones */}
       <div className="confirmation__actions">
+        <button
+          type="button"
+          className="btn-primary confirmation__status-btn"
+          onClick={() => navigate(`/${slug}/reserva/${booking.id}`)}
+        >
+          Ver estado de mi reserva →
+        </button>
+
         <button
           className="btn-outline confirmation__ics"
           onClick={handleDownloadICS}

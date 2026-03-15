@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useTenant } from "../../hooks/useTenant.js";
@@ -20,8 +20,14 @@ export default function ProfessionalPage() {
   const { slug, profSlug } = useParams();
   const navigate = useNavigate();
   const { data: tenant, isLoading: tenantLoading } = useTenant(slug);
-  const { data: professional, isLoading: profLoading } = useProfessional(tenant?.id, profSlug);
-  const { data: services = [], isLoading: servicesLoading } = useServices(tenant?.id, { activeOnly: true });
+  const { data: professional, isLoading: profLoading } = useProfessional(
+    tenant?.id,
+    profSlug,
+  );
+  const { data: services = [], isLoading: servicesLoading } = useServices(
+    tenant?.id,
+    { activeOnly: true },
+  );
 
   const [selectedServiceIds, setSelectedServiceIds] = useState(() => new Set());
   const [lightboxUrl, setLightboxUrl] = useState(null);
@@ -29,7 +35,10 @@ export default function ProfessionalPage() {
 
   useApplyTheme(tenant);
 
-  const { data: reviews = [] } = useApprovedReviewsByProf(tenant?.id, professional?.id);
+  const { data: reviews = [] } = useApprovedReviewsByProf(
+    tenant?.id,
+    professional?.id,
+  );
   const hasReviews = reviews.length > 0;
   const displayedReviews = reviewsExpanded ? reviews : reviews.slice(0, 5);
   const hasMoreReviews = reviews.length > 5;
@@ -37,6 +46,7 @@ export default function ProfessionalPage() {
   const portfolioUrls = professional?.portfolioUrls ?? [];
   const hasPortfolio = Array.isArray(portfolioUrls) && portfolioUrls.length > 0;
   const lightboxRef = useRef(null);
+  const servicesSectionRef = useRef(null);
 
   useEffect(() => {
     if (!lightboxUrl) return;
@@ -52,7 +62,7 @@ export default function ProfessionalPage() {
   const tenantId = tenant?.id;
 
   const profServices = (services ?? []).filter((s) =>
-    (s.professionalIds || []).includes(professional?.id)
+    (s.professionalIds || []).includes(professional?.id),
   );
 
   const servicesByCategory = profServices.reduce((acc, service) => {
@@ -62,9 +72,17 @@ export default function ProfessionalPage() {
     return acc;
   }, {});
 
-  const selectedServices = profServices.filter((s) => selectedServiceIds.has(s.id));
-  const totalPrice = selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0);
-  const totalDuration = selectedServices.reduce((sum, s) => sum + (s.duration ?? 0), 0);
+  const selectedServices = profServices.filter((s) =>
+    selectedServiceIds.has(s.id),
+  );
+  const totalPrice = selectedServices.reduce(
+    (sum, s) => sum + (s.price ?? 0),
+    0,
+  );
+  const totalDuration = selectedServices.reduce(
+    (sum, s) => sum + (s.duration ?? 0),
+    0,
+  );
 
   const toggleService = (serviceId) => {
     setSelectedServiceIds((prev) => {
@@ -80,7 +98,16 @@ export default function ProfessionalPage() {
 
   const handleReservar = () => {
     const servicesParam = Array.from(selectedServiceIds).join(",");
-    navigate(`/${slug}/reservar?profId=${professional.id}&services=${servicesParam}`);
+    navigate(
+      `/${slug}/reservar?profId=${professional.id}&services=${servicesParam}`,
+    );
+  };
+
+  const scrollToServices = () => {
+    servicesSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   if (!tenantLoading && !tenant) {
@@ -94,8 +121,14 @@ export default function ProfessionalPage() {
   if (!profLoading && tenant && !professional) {
     return (
       <div className="professional-page professional-page--error">
-        <p className="professional-page__error-msg">Profesional no encontrado</p>
-        <button type="button" className="btn-outline" onClick={() => navigate(`/${slug}`)}>
+        <p className="professional-page__error-msg">
+          Profesional no encontrado
+        </p>
+        <button
+          type="button"
+          className="btn-outline"
+          onClick={() => navigate(`/${slug}`)}
+        >
           Volver
         </button>
       </div>
@@ -110,6 +143,9 @@ export default function ProfessionalPage() {
     );
   }
 
+  const profFirstName =
+    professional?.name?.trim().split(/\s+/)[0] || "este profesional";
+
   return (
     <div className="professional-page">
       <ProfessionalHero
@@ -117,6 +153,17 @@ export default function ProfessionalPage() {
         tenantSlug={slug}
         tenantName={tenant.name}
       />
+
+      <div className="professional-page__hero-cta">
+        <button
+          type="button"
+          className="btn-primary professional-page__reservar-btn"
+          onClick={scrollToServices}
+        >
+          Reserva con {profFirstName}{" "}
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </div>
 
       {hasPortfolio && (
         <section className="prof-page-section prof-portfolio">
@@ -136,35 +183,6 @@ export default function ProfessionalPage() {
         </section>
       )}
 
-      <section className="prof-page-section">
-        <div className="prof-section-header">
-          <h2 className="prof-section-title">Servicios</h2>
-        </div>
-
-        <div className="prof-services">
-          {Object.keys(servicesByCategory).length === 0 ? (
-            <p className="prof-services__empty">
-              Este profesional aún no tiene servicios disponibles.
-            </p>
-          ) : (
-            Object.entries(servicesByCategory).map(([cat, items]) => (
-              <div className="prof-services__group" key={cat}>
-                <p className="prof-services__category">{cat}</p>
-                <div className="prof-services__list">
-                  {items.map((service) => (
-                    <SelectableServiceCard
-                      key={service.id}
-                      service={service}
-                      selected={selectedServiceIds.has(service.id)}
-                      onToggle={() => toggleService(service.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
       {hasReviews && (
         <section className="prof-page-section prof-reviews">
           <h2 className="prof-section-title prof-reviews__title">Reseñas</h2>
@@ -233,6 +251,35 @@ export default function ProfessionalPage() {
           )}
         </section>
       )}
+      <section className="prof-page-section" ref={servicesSectionRef}>
+        <div className="prof-section-header">
+          <h2 className="prof-section-title">Servicios</h2>
+        </div>
+
+        <div className="prof-services">
+          {Object.keys(servicesByCategory).length === 0 ? (
+            <p className="prof-services__empty">
+              Este profesional aún no tiene servicios disponibles.
+            </p>
+          ) : (
+            Object.entries(servicesByCategory).map(([cat, items]) => (
+              <div className="prof-services__group" key={cat}>
+                <p className="prof-services__category">{cat}</p>
+                <div className="prof-services__list">
+                  {items.map((service) => (
+                    <SelectableServiceCard
+                      key={service.id}
+                      service={service}
+                      selected={selectedServiceIds.has(service.id)}
+                      onToggle={() => toggleService(service.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
       {selectedServiceIds.size > 0 && (
         <div className="booking-sticky">
           <div className="booking-sticky__summary">
@@ -249,7 +296,7 @@ export default function ProfessionalPage() {
             className="btn-primary booking-sticky__btn"
             onClick={handleReservar}
           >
-            Reservar <ArrowRight size={16} aria-hidden="true" />
+            Reservar <ChevronRight size={16} aria-hidden="true" />
           </button>
         </div>
       )}

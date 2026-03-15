@@ -7,6 +7,17 @@
   padding-bottom: 100px;
 }
 
+/* CTA al final del hero: scroll a servicios */
+.professional-page__hero-cta {
+  padding: 0 15px;
+}
+
+.professional-page__reservar-btn {
+  width: 100%;
+  justify-content: center;
+  gap: 5px;
+}
+
 .prof-page-section {
   display: flex;
   flex-direction: column;

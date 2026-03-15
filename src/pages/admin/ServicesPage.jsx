@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../config/firebase.js";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useTenantById } from "../../hooks/useTenant.js";
 import { useServices } from "../../hooks/useServices.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,6 +27,7 @@ const EMPTY_FORM = {
   newCategory: "",
   price: "",
   duration: "",
+  depositAmount: 0,
   professionalIds: [],
   isActive: true,
 };
@@ -33,12 +35,14 @@ const EMPTY_FORM = {
 // ─── Modal de crear / editar servicio ────────────────────────
 function ServiceModal({
   service,
+  tenant,
   professionals,
   existingCategories,
   onSave,
   onClose,
 }) {
   const isEditing = !!service?.id;
+  const showDepositAmount = tenant?.deposit?.type === "per_service";
 
   const [form, setForm] = useState(() => {
     if (isEditing) {
@@ -49,6 +53,7 @@ function ServiceModal({
         newCategory: "",
         price: String(service.price ?? ""),
         duration: String(service.duration ?? ""),
+        depositAmount: Number(service.depositAmount) || 0,
         professionalIds: service.professionalIds || [],
         isActive: service.isActive ?? true,
       };
@@ -104,6 +109,9 @@ function ServiceModal({
       category,
       price: Number(form.price),
       duration: Number(form.duration),
+      ...(showDepositAmount
+        ? { depositAmount: Number(form.depositAmount) || 0 }
+        : {}),
       professionalIds: form.professionalIds,
       isActive: form.isActive,
     });
@@ -188,6 +196,24 @@ function ServiceModal({
               )}
             </div>
           </div>
+
+          {showDepositAmount && (
+            <div className="form-field">
+              <label>Abono requerido (CLP)</label>
+              <input
+                type="number"
+                placeholder="0"
+                min={0}
+                value={form.depositAmount === 0 ? "" : form.depositAmount}
+                onChange={(e) =>
+                  set(
+                    "depositAmount",
+                    e.target.value === "" ? 0 : Number(e.target.value)
+                  )
+                }
+              />
+            </div>
+          )}
 
           {/* Categoría */}
           <div className="form-field">
@@ -348,6 +374,7 @@ export default function ServicesPage() {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
 
+  const { data: tenant } = useTenantById(tenantId);
   const { data: services = [] } = useServices(tenantId);
   const { data: professionals = [] } = useProfessionals(tenantId);
 
@@ -466,6 +493,7 @@ export default function ServicesPage() {
       {modalOpen && (
         <ServiceModal
           service={editService}
+          tenant={tenant}
           professionals={professionals}
           existingCategories={existingCategories}
           onSave={handleSave}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { useQueryClient } from "@tanstack/react-query";
 import { db } from "../../config/firebase.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { Check, Camera, Image as ImageIcon, Sun, Moon } from "lucide-react";
@@ -15,6 +16,26 @@ const DEFAULT_THEME = {
   mode: "light",
   accent: "#c17b5c",
 };
+
+const DEFAULT_DEPOSIT = {
+  enabled: false,
+  type: "fixed",
+  amount: 0,
+  bankInfo: {
+    bank: "",
+    accountType: "",
+    accountNumber: "",
+    rut: "",
+    holderName: "",
+  },
+};
+
+const ACCOUNT_TYPES = [
+  "Cuenta RUT",
+  "Cuenta Corriente",
+  "Cuenta Vista",
+  "Cuenta Mercado Pago",
+];
 
 const LIGHT_ACCENTS = [
   "#c17b5c",
@@ -58,6 +79,7 @@ async function uploadToCloudinary(file, folder) {
 
 export default function BusinessProfilePage() {
   const { tenantId } = useAuth();
+  const queryClient = useQueryClient();
   const logoInputRef = useRef(null);
   const coverInputRef = useRef(null);
 
@@ -80,6 +102,7 @@ export default function BusinessProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
+  const [deposit, setDeposit] = useState(DEFAULT_DEPOSIT);
 
   useEffect(() => {
     if (!tenantId) {
@@ -107,6 +130,21 @@ export default function BusinessProfilePage() {
           const accent = t.accent || DEFAULT_THEME.accent;
           setTheme({ mode, accent });
           setCustomAccent(accent);
+          const dep = d.deposit;
+          if (dep && typeof dep === "object") {
+            setDeposit({
+              enabled: Boolean(dep.enabled),
+              type: dep.type === "per_service" ? "per_service" : "fixed",
+              amount: Number(dep.amount) || 0,
+              bankInfo: {
+                bank: dep.bankInfo?.bank ?? "",
+                accountType: dep.bankInfo?.accountType ?? "",
+                accountNumber: dep.bankInfo?.accountNumber ?? "",
+                rut: dep.bankInfo?.rut ?? "",
+                holderName: dep.bankInfo?.holderName ?? "",
+              },
+            });
+          }
         }
       } catch (err) {
         if (!cancelled) setError("No se pudo cargar el negocio.");
@@ -125,6 +163,20 @@ export default function BusinessProfilePage() {
 
   function setThemeField(field, value) {
     setTheme((t) => ({ ...t, [field]: value }));
+  }
+
+  function setDepositField(path, value) {
+    if (path === "enabled" || path === "type" || path === "amount") {
+      setDeposit((d) => ({ ...d, [path]: value }));
+      return;
+    }
+    if (path.startsWith("bankInfo.")) {
+      const key = path.replace("bankInfo.", "");
+      setDeposit((d) => ({
+        ...d,
+        bankInfo: { ...d.bankInfo, [key]: value },
+      }));
+    }
   }
 
   function handleModeChange(nextMode) {
@@ -225,7 +277,22 @@ export default function BusinessProfilePage() {
           mode: theme.mode === "dark" ? "dark" : "light",
           accent: theme.accent || DEFAULT_THEME.accent,
         },
+        deposit: {
+          enabled: deposit.enabled,
+          type: deposit.type,
+          amount: deposit.enabled && deposit.type === "fixed" ? Number(deposit.amount) || 0 : 0,
+          bankInfo: deposit.enabled
+            ? {
+                bank: deposit.bankInfo.bank?.trim() || "",
+                accountType: deposit.bankInfo.accountType?.trim() || "",
+                accountNumber: deposit.bankInfo.accountNumber?.trim() || "",
+                rut: deposit.bankInfo.rut?.trim() || "",
+                holderName: deposit.bankInfo.holderName?.trim() || "",
+              }
+            : DEFAULT_DEPOSIT.bankInfo,
+        },
       });
+      queryClient.invalidateQueries({ queryKey: ["tenant-by-id", tenantId] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -588,6 +655,134 @@ export default function BusinessProfilePage() {
                 </button>
               </div>
             </div>
+          </section>
+
+          {/* Sección Abono */}
+          <section className="business-profile-deposit">
+            <h3 className="business-profile-deposit__title">Abono</h3>
+            <p className="business-profile-deposit__subtitle">
+              Opcional. Si lo activas, los clientes deberán transferir un abono y subir el comprobante para confirmar la reserva.
+            </p>
+
+            <div className="business-profile-deposit-toggle-wrap">
+              <span className="business-profile-deposit-toggle-label">
+                Requerir abono para reservar
+              </span>
+              <button
+                type="button"
+                className={`business-profile-deposit-toggle ${deposit.enabled ? "business-profile-deposit-toggle--on" : ""}`}
+                onClick={() => setDepositField("enabled", !deposit.enabled)}
+                role="switch"
+                aria-checked={deposit.enabled}
+              >
+                <span className="business-profile-deposit-toggle__track">
+                  <span className="business-profile-deposit-toggle__thumb" />
+                </span>
+              </button>
+            </div>
+
+            {deposit.enabled && (
+              <>
+                <p className="business-profile-deposit-type-label">Tipo de abono</p>
+                <div className="inherit-toggle business-profile-deposit-type">
+                  <button
+                    type="button"
+                    className={`inherit-btn ${deposit.type === "fixed" ? "inherit-btn--active" : ""}`}
+                    onClick={() => setDepositField("type", "fixed")}
+                  >
+                    Monto fijo
+                  </button>
+                  <button
+                    type="button"
+                    className={`inherit-btn ${deposit.type === "per_service" ? "inherit-btn--active" : ""}`}
+                    onClick={() => setDepositField("type", "per_service")}
+                  >
+                    Por servicio
+                  </button>
+                </div>
+
+                {deposit.type === "fixed" && (
+                  <div className="form-field">
+                    <label htmlFor="deposit-amount">Monto del abono (CLP)</label>
+                    <input
+                      id="deposit-amount"
+                      type="number"
+                      min={0}
+                      value={deposit.amount || ""}
+                      onChange={(e) =>
+                        setDepositField("amount", e.target.value === "" ? 0 : Number(e.target.value))
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                )}
+
+                {deposit.type === "per_service" && (
+                  <p className="business-profile-deposit-per-service-hint">
+                    Configura el abono de cada servicio en la sección Servicios.
+                  </p>
+                )}
+
+                <p className="business-profile-deposit-bank-label">Datos bancarios</p>
+                <div className="business-profile-deposit-bank">
+                  <div className="form-field">
+                    <label htmlFor="deposit-bank">Banco</label>
+                    <input
+                      id="deposit-bank"
+                      type="text"
+                      value={deposit.bankInfo.bank}
+                      onChange={(e) => setDepositField("bankInfo.bank", e.target.value)}
+                      placeholder="Banco Estado, Banco Chile, Mercado Pago..."
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label htmlFor="deposit-account-type">Tipo de cuenta</label>
+                    <select
+                      id="deposit-account-type"
+                      value={deposit.bankInfo.accountType}
+                      onChange={(e) => setDepositField("bankInfo.accountType", e.target.value)}
+                    >
+                      <option value="">Selecciona</option>
+                      {ACCOUNT_TYPES.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label htmlFor="deposit-account-number">Número de cuenta</label>
+                    <input
+                      id="deposit-account-number"
+                      type="text"
+                      value={deposit.bankInfo.accountNumber}
+                      onChange={(e) => setDepositField("bankInfo.accountNumber", e.target.value)}
+                      placeholder="Número de cuenta"
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label htmlFor="deposit-rut">RUT del titular</label>
+                    <input
+                      id="deposit-rut"
+                      type="text"
+                      value={deposit.bankInfo.rut}
+                      onChange={(e) => setDepositField("bankInfo.rut", e.target.value)}
+                      placeholder="12.345.678-9"
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label htmlFor="deposit-holder">Nombre del titular</label>
+                    <input
+                      id="deposit-holder"
+                      type="text"
+                      value={deposit.bankInfo.holderName}
+                      onChange={(e) => setDepositField("bankInfo.holderName", e.target.value)}
+                      placeholder="Nombre del titular"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </section>
 
           <button

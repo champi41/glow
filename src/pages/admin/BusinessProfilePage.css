@@ -216,6 +216,7 @@
 }
 
 .business-profile-form .form-field input,
+.business-profile-form .form-field select,
 .business-profile-form .form-field textarea {
   padding: 11px 14px;
   border: 1px solid var(--color-border);
@@ -231,6 +232,7 @@
 }
 
 .business-profile-form .form-field input:focus,
+.business-profile-form .form-field select:focus,
 .business-profile-form .form-field textarea:focus {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 3px var(--color-accent-bg);
@@ -493,6 +495,139 @@
   background: var(--color-accent);
   color: var(--color-accent-text);
   cursor: pointer;
+}
+
+/* ── Abono ── */
+.business-profile-deposit {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.business-profile-deposit__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.business-profile-deposit__subtitle {
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.business-profile-deposit-toggle-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.business-profile-deposit-toggle-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+.business-profile-deposit-toggle {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.business-profile-deposit-toggle__track {
+  display: block;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  position: relative;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.business-profile-deposit-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  transition: transform 0.2s ease;
+}
+
+.business-profile-deposit-toggle--on .business-profile-deposit-toggle__track {
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent);
+}
+
+.business-profile-deposit-toggle--on .business-profile-deposit-toggle__thumb {
+  transform: translateX(20px);
+  background: var(--color-accent);
+}
+
+.business-profile-deposit-type-label,
+.business-profile-deposit-bank-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.business-profile-deposit-type {
+  max-width: 320px;
+}
+
+.inherit-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.inherit-btn {
+  flex: 1;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.inherit-btn + .inherit-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.inherit-btn--active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.business-profile-deposit-per-service-hint {
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.business-profile-deposit-bank {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* ── Botón guardar ── */

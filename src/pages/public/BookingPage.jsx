@@ -339,6 +339,7 @@ export default function BookingPage() {
             endTime: group.end,
             price: service.price,
             duration: service.duration,
+            depositAmount: Number(service.depositAmount) || 0,
           };
         }),
       );
@@ -357,14 +358,21 @@ export default function BookingPage() {
         totalDuration: items.reduce((s, i) => s + i.duration, 0),
       };
 
-      const bookingId = await createBooking(tenantId, booking);
+      const result = await createBooking(tenantId, booking, tenant?.deposit);
 
       // Invalidar queries para que la agenda del admin se actualice
       queryClient.invalidateQueries({
         queryKey: ["bookings-date", tenantId, selectedDate],
       });
 
-      setConfirmedBooking({ id: bookingId, ...booking });
+      setConfirmedBooking({
+        id: result.id,
+        ...booking,
+        depositRequired: result.depositRequired,
+        depositAmount: result.depositAmount,
+        depositStatus: result.depositStatus,
+        depositProofUrl: null,
+      });
       setCurrentStep(STEP.CONFIRMATION);
     } catch (err) {
       console.error("Error al crear reserva:", err);
