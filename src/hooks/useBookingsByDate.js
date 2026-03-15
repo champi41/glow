@@ -14,6 +14,7 @@ export function useBookingsByDate(tenantId, dateStr) {
     queryKey: ["bookings-date", tenantId, dateStr],
     queryFn: () => getBookingsByDate(tenantId, dateStr),
     enabled: !!tenantId && !!dateStr,
-    staleTime: THIRTY_SECONDS,
+    staleTime: 0, // ← cambiar a 0
+    gcTime: 0, // ← agregar esto — no guardar en cache
   });
 }

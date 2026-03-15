@@ -14,6 +14,7 @@ export function useBlocksByDate(tenantId, dateStr) {
     queryKey: ["blocks-date", tenantId, dateStr],
     queryFn: () => getBlocksByDate(tenantId, dateStr),
     enabled: !!tenantId && !!dateStr,
-    staleTime: THIRTY_SECONDS,
+    staleTime: 0, // ← cambiar a 0
+    gcTime: 0, // ← agregar esto
   });
 }
