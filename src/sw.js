@@ -1,8 +1,17 @@
 import { precacheAndRoute } from "workbox-precaching";
-
+import { registerRoute } from "workbox-routing";
+import { NetworkOnly } from "workbox-strategies";
 // Precache assets generados por Vite
 precacheAndRoute(self.__WB_MANIFEST);
 
+// Nunca cachear nada de Firebase/Google APIs
+registerRoute(
+  ({ url }) =>
+    url.hostname.includes("googleapis.com") ||
+    url.hostname.includes("firebaseio.com") ||
+    url.hostname.includes("firestore.googleapis.com"),
+  new NetworkOnly(),
+);
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   const data = event.data.json();

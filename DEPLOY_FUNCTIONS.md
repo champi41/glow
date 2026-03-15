@@ -53,7 +53,7 @@ firebase deploy --only functions:onDepositProofUploaded
 2. **Functions** → deberías ver:
    - `onBookingCreated` (nueva reserva)
    - `onBookingCancelled` (reserva cancelada)
-   - `onDepositProofUploaded` (comprobante subido) ← nueva
+   - `onDepositProofUploaded` (comprobante subido)
 
 ## Resumen de notificaciones
 
