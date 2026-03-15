@@ -1,4 +1,10 @@
-import { collection, getDocsFromServer, addDoc, query, where } from "firebase/firestore";
+import {
+  collection,
+  getDocsFromServer,
+  addDoc,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "../../config/firebase.js";
 
 /**
@@ -8,10 +14,21 @@ import { db } from "../../config/firebase.js";
  * @returns {Promise<Array<{ id: string, ... }>>}
  */
 export async function getBookingsByDate(tenantId, dateStr) {
+  console.log("[firestore] getBookingsByDate llamado:", tenantId, dateStr);
   const bookingsRef = collection(db, "tenants", tenantId, "bookings");
   const q = query(bookingsRef, where("dateStr", "==", dateStr));
-  const snapshot = await getDocsFromServer(q); // ← cambio
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+  try {
+    const snapshot = await getDocsFromServer(q);
+    console.log("[firestore] snapshot size:", snapshot.size);
+    snapshot.docs.forEach((d) =>
+      console.log("[firestore] doc:", d.id, d.data().dateStr, d.data().status),
+    );
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.error("[firestore] ERROR:", err.code, err.message);
+    return [];
+  }
 }
 
 /**
@@ -30,10 +47,19 @@ function getDepositFields(tenantDeposit, bookingData) {
   if (!tenantDeposit?.enabled) return defaultFields;
 
   let amount = 0;
-  if (tenantDeposit.type === "fixed" && typeof tenantDeposit.amount === "number") {
+  if (
+    tenantDeposit.type === "fixed" &&
+    typeof tenantDeposit.amount === "number"
+  ) {
     amount = tenantDeposit.amount;
-  } else if (tenantDeposit.type === "per_service" && Array.isArray(bookingData.items)) {
-    amount = bookingData.items.reduce((s, i) => s + (Number(i.depositAmount) || 0), 0);
+  } else if (
+    tenantDeposit.type === "per_service" &&
+    Array.isArray(bookingData.items)
+  ) {
+    amount = bookingData.items.reduce(
+      (s, i) => s + (Number(i.depositAmount) || 0),
+      0,
+    );
   }
 
   return {
