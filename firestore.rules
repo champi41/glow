@@ -27,14 +27,23 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
       }
 
-      // Bookings: get público (link de reseña carga 1 booking por id); list/update/delete solo admin
-     	match /bookings/{bookingId} {
-  			allow read: if true;        // ← cambiar get+list a read completo
-  			allow create: if true;
-  			allow update, delete: if request.auth != null
-    			&&
-      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
-			}
+      // Bookings: lectura y creación públicas; update/delete solo admin, salvo acciones del cliente sin login
+      match /bookings/{bookingId} {
+        allow read: if true;
+        allow create: if true;
+        // Admin del tenant puede hacer cualquier update/delete
+        allow update, delete: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId
+        // Cliente sin login: solo subir comprobante de abono
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['depositStatus', 'depositProofUrl'])
+            && request.resource.data.depositStatus == 'uploaded'
+            && request.resource.data.depositProofUrl is string
+            && request.resource.data.depositProofUrl.size() > 0)
+        // Cliente sin login: solo cancelar (status -> cancelled desde pending o confirmed)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status == 'cancelled'
+            && resource.data.status in ['pending', 'confirmed']);
+      }
 			match /blocks/{blockId} {
   			allow read: if true;        // ← agregar lectura pública
   			allow write: if request.auth != null

@@ -1,27 +1,8 @@
 import { precacheAndRoute } from "workbox-precaching";
-import { registerRoute } from "workbox-routing";
-import { NetworkOnly } from "workbox-strategies";
+
 // Precache assets generados por Vite
 precacheAndRoute(self.__WB_MANIFEST);
-// Bloquear TODO caché para Firebase
-registerRoute(
-  ({ url }) => url.hostname.includes("googleapis.com"),
-  new NetworkOnly()
-);
 
-// Bloquear caché para rutas de reserva pública
-registerRoute(
-  ({ url }) => url.pathname.includes("/reservar"),
-  new NetworkOnly()
-);
-// Nunca cachear nada de Firebase/Google APIs
-registerRoute(
-  ({ url }) =>
-    url.hostname.includes("googleapis.com") ||
-    url.hostname.includes("firebaseio.com") ||
-    url.hostname.includes("firestore.googleapis.com"),
-  new NetworkOnly(),
-);
 self.addEventListener("push", (event) => {
   if (!event.data) return;
   const data = event.data.json();
@@ -33,7 +14,7 @@ self.addEventListener("push", (event) => {
       badge: data.badge || "/pwa-192x192.png",
       vibrate: [200, 100, 200],
       data: data.data || {},
-    })
+    }),
   );
 });
 
@@ -53,7 +34,6 @@ self.addEventListener("notificationclick", (event) => {
           }
         }
         if (clients.openWindow) return clients.openWindow(url);
-      })
+      }),
   );
 });
-
