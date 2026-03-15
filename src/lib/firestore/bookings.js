@@ -1,10 +1,4 @@
-import {
-  collection,
-  getDocs,
-  addDoc,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, addDoc, query, where } from "firebase/firestore";
 import { db } from "../../config/firebase.js";
 
 /**
@@ -14,21 +8,10 @@ import { db } from "../../config/firebase.js";
  * @returns {Promise<Array<{ id: string, ... }>>}
  */
 export async function getBookingsByDate(tenantId, dateStr) {
-  console.log("[firestore] getBookingsByDate llamado:", tenantId, dateStr);
   const bookingsRef = collection(db, "tenants", tenantId, "bookings");
   const q = query(bookingsRef, where("dateStr", "==", dateStr));
-
-  try {
-    const snapshot = await getDocs(q);
-    console.log("[firestore] snapshot size:", snapshot.size);
-    snapshot.docs.forEach((d) =>
-      console.log("[firestore] doc:", d.id, d.data().dateStr, d.data().status),
-    );
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  } catch (err) {
-    console.error("[firestore] ERROR:", err.code, err.message);
-    return [];
-  }
+  const snapshot = await getDocs(q); // ← cambio
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
 /**

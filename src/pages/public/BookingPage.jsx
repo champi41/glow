@@ -89,9 +89,6 @@ export default function BookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  // Modo debug (útil para revisar en iPhone sin consola)
-  const debugSlots = searchParams.get("debug") === "1";
-
   // ── Queries de disponibilidad (solo cuando hay fecha) ────
   const { data: existingBookings = [] } = useBookingsByDate(
     tenantId,
@@ -170,25 +167,6 @@ export default function BookingPage() {
   // ── Slots disponibles (derivado, se recalcula al cambiar fecha/assignments) ─
   const resolvedAssignments = useMemo(() => {
     if (!selectedDate || !selectedServices.length) return {};
-    // Debug: ver asignaciones y reservas por día (útil para problemas en iOS)
-    if (typeof window !== "undefined") {
-      try {
-        // Solo loguear una vez por fecha para no saturar consola
-        console.log("[slots-debug] resolveAnyAssignments", {
-          ua: window.navigator.userAgent,
-          selectedDate,
-          selectedServices: selectedServices.map((s) => ({
-            id: s.id,
-            name: s.name,
-          })),
-          assignments,
-          existingBookings,
-          existingBlocks,
-        });
-      } catch {
-        // ignorar errores de logging
-      }
-    }
     return resolveAnyAssignments(
       assignments,
       selectedServices,
@@ -220,20 +198,6 @@ export default function BookingPage() {
       existingBookings,
       existingBlocks,
     });
-
-    if (typeof window !== "undefined") {
-      try {
-        console.log("[slots-debug] calcAvailableSlots result", {
-          ua: window.navigator.userAgent,
-          selectedDate,
-          resolvedAssignments,
-          slotsCount: slots.length,
-          sampleSlots: slots.slice(0, 5),
-        });
-      } catch {
-        // ignorar errores de logging
-      }
-    }
 
     // Si la fecha seleccionada es hoy, filtrar horas que ya pasaron
     const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
@@ -550,34 +514,6 @@ export default function BookingPage() {
           />
         )}
       </div>
-
-      {debugSlots && (
-        <div className="booking-debug-panel">
-          <p className="booking-debug-title">Debug slots</p>
-          <pre className="booking-debug-pre">
-            {JSON.stringify(
-              {
-                tenantId,
-                ua:
-                  typeof window !== "undefined"
-                    ? window.navigator.userAgent
-                    : "n/a",
-                firebaseProjectId:
-                  import.meta.env?.VITE_FIREBASE_PROJECT_ID || "n/a",
-                selectedDate,
-                existingBookingsCount: existingBookings.length,
-                existingBlocksCount: existingBlocks.length,
-                assignments,
-                resolvedAssignments,
-                availableSlotsCount: availableSlots.length,
-                sampleSlots: availableSlots.slice(0, 3),
-              },
-              null,
-              2,
-            )}
-          </pre>
-        </div>
-      )}
     </div>
   );
 }
