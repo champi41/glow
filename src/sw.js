@@ -3,7 +3,17 @@ import { registerRoute } from "workbox-routing";
 import { NetworkOnly } from "workbox-strategies";
 // Precache assets generados por Vite
 precacheAndRoute(self.__WB_MANIFEST);
+// Bloquear TODO caché para Firebase
+registerRoute(
+  ({ url }) => url.hostname.includes("googleapis.com"),
+  new NetworkOnly()
+);
 
+// Bloquear caché para rutas de reserva pública
+registerRoute(
+  ({ url }) => url.pathname.includes("/reservar"),
+  new NetworkOnly()
+);
 // Nunca cachear nada de Firebase/Google APIs
 registerRoute(
   ({ url }) =>
