@@ -6,7 +6,9 @@ import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 import App from "./App.jsx";
 
-registerSW({ immediate: true });
+if (window.location.pathname.startsWith("/admin")) {
+  registerSW({ immediate: true });
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
