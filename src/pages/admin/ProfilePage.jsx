@@ -272,7 +272,11 @@ export default function ProfilePage() {
                 className={`profile-avatar ${uploading ? "profile-avatar--uploading" : ""}`}
               >
                 {displayPhoto ? (
-                  <img src={displayPhoto} alt="" className="profile-avatar__img" />
+                  <img
+                    src={displayPhoto}
+                    alt=""
+                    className="profile-avatar__img"
+                  />
                 ) : (
                   <span className="profile-avatar__initial">{initial}</span>
                 )}
@@ -292,42 +296,47 @@ export default function ProfilePage() {
               onChange={handleFileChange}
               aria-hidden="true"
             />
+            <div className="nombreIg">
+              <div className="form-field">
+                <label htmlFor="profile-name">Nombre</label>
+                <input
+                  id="profile-name"
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setField("name", e.target.value)}
+                  placeholder="Tu nombre"
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="profile-instagram">Instagram</label>
+                <input
+                  id="profile-instagram"
+                  type="text"
+                  value={form.instagram}
+                  onChange={(e) => setField("instagram", e.target.value)}
+                  placeholder="@tuusuario"
+                />
+              </div>
+            </div>
           </div>
 
           {error && <p className="profile-error">{error}</p>}
 
           <div className="form-field">
-            <label htmlFor="profile-name">Nombre</label>
-            <input
-              id="profile-name"
-              type="text"
-              value={form.name}
-              onChange={(e) => setField("name", e.target.value)}
-              placeholder="Tu nombre"
-            />
-          </div>
-
-          <div className="form-field">
             <label htmlFor="profile-bio">
-              Bio <span className="profile-char-count">{form.bio.length}/{BIO_MAX}</span>
+              Bio{" "}
+              <span className="profile-char-count">
+                {form.bio.length}/{BIO_MAX}
+              </span>
             </label>
             <textarea
               id="profile-bio"
               value={form.bio}
-              onChange={(e) => setField("bio", e.target.value.slice(0, BIO_MAX))}
+              onChange={(e) =>
+                setField("bio", e.target.value.slice(0, BIO_MAX))
+              }
               placeholder="Breve descripción (máx. 160 caracteres)"
               rows={3}
-            />
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="profile-instagram">Instagram</label>
-            <input
-              id="profile-instagram"
-              type="text"
-              value={form.instagram}
-              onChange={(e) => setField("instagram", e.target.value)}
-              placeholder="@tuusuario"
             />
           </div>
 
@@ -335,16 +344,12 @@ export default function ProfilePage() {
           <div className="profile-portfolio">
             <h3 className="profile-portfolio__title">Mis trabajos</h3>
             <p className="profile-portfolio__subtitle">
-              Máximo 5 fotos · Toca una para eliminarla
+              Máximo {PORTFOLIO_MAX} fotos
             </p>
             <div className="profile-portfolio__grid">
               {(form.portfolioUrls ?? []).map((url, index) => (
                 <div key={url} className="profile-portfolio__thumb-wrap">
-                  <img
-                    src={url}
-                    alt=""
-                    className="profile-portfolio__thumb"
-                  />
+                  <img src={url} alt="" className="profile-portfolio__thumb" />
                   <button
                     type="button"
                     className="profile-portfolio__remove"
@@ -359,7 +364,10 @@ export default function ProfilePage() {
                 </div>
               ))}
               {uploadingPortfolioIndex !== null && (
-                <div className="profile-portfolio__skeleton" aria-hidden="true" />
+                <div
+                  className="profile-portfolio__skeleton"
+                  aria-hidden="true"
+                />
               )}
               {(form.portfolioUrls ?? []).length < PORTFOLIO_MAX &&
                 uploadingPortfolioIndex === null && (
@@ -405,25 +413,26 @@ export default function ProfilePage() {
             {!isSupported ? (
               <p className="profile-notifications__hint">
                 {isIOS
-                  ? (isStandalone
-                      ? "En iPhone, las notificaciones push requieren iOS 16.4+. Si no aparecen, revisa Ajustes → Notificaciones y habilita las notificaciones de la app."
-                      : "En iPhone, las notificaciones push requieren iOS 16.4+ y abrir la app desde el ícono (Añadir a pantalla de inicio).")
+                  ? isStandalone
+                    ? "En iPhone, las notificaciones push requieren iOS 16.4+. Si no aparecen, revisa Ajustes → Notificaciones y habilita las notificaciones de la app."
+                    : "En iPhone, las notificaciones push requieren iOS 16.4+ y abrir la app desde el ícono (Añadir a pantalla de inicio)."
                   : "Tu navegador no soporta notificaciones push."}
               </p>
             ) : permission === "denied" ? (
               <p className="profile-notifications__hint">
-                Bloqueaste las notificaciones. Actívalas desde la configuración de tu navegador.
+                Bloqueaste las notificaciones. Actívalas desde la configuración
+                de tu navegador.
               </p>
             ) : pushError ? (
-              <p className="profile-notifications__hint">
-                {pushError}
-              </p>
+              <p className="profile-notifications__hint">{pushError}</p>
             ) : (
               <div className="profile-notifications__row">
                 <div className="profile-notifications__left">
                   <Bell size={16} aria-hidden="true" />
                   <span className="profile-notifications__text">
-                    {subscribed ? "Notificaciones activadas" : "Recibe alertas de nuevas reservas"}
+                    {subscribed
+                      ? "Notificaciones activadas"
+                      : "Recibe alertas de nuevas reservas"}
                   </span>
                 </div>
                 <button
@@ -431,7 +440,11 @@ export default function ProfilePage() {
                   className="profile-notifications__toggle"
                   onClick={subscribed ? unsubscribe : subscribe}
                   disabled={pushLoading}
-                  aria-label={subscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
+                  aria-label={
+                    subscribed
+                      ? "Desactivar notificaciones"
+                      : "Activar notificaciones"
+                  }
                 >
                   {pushLoading ? (
                     <span className="profile-notifications__loading">...</span>

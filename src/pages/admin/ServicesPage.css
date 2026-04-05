@@ -3,8 +3,7 @@
 .services-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-bottom: 48px;
+  gap: 15px;
 }
 
 .services-page__new {
@@ -142,18 +141,50 @@
 
 /* ── Modal form ── */
 .modal-card--form {
-  max-height: 90svh;
+  max-height: 95svh;
   display: flex;
   flex-direction: column;
 }
 
+/* Slide-up modal (desliza desde abajo) - parecido a location-hours */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 26, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 700;
+  display: flex;
+  align-items: flex-end; /* importante: posiciona abajo */
+  justify-content: center;
+  padding: 0; /* ocupar todo el ancho */
+  animation: modal-fade-in 0.25s ease;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  width: 100%;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  animation: modal-slide-up 0.25s ease;
+}
+
+@keyframes modal-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
 .modal-card__body--scroll {
   overflow-y: auto;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 16px 20px;
+  gap: 10px;
+  padding: 15px;
 }
 
 .form-row {
@@ -176,12 +207,12 @@
 
 .form-field input,
 .form-field textarea {
-  padding: 11px 14px;
+  padding: 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 300;
   color: var(--color-text-primary);
   outline: none;

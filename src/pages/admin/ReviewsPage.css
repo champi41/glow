@@ -3,8 +3,7 @@
 .reviews-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-bottom: 32px;
+  gap: 15px;
 }
 
 .reviews-section__title {

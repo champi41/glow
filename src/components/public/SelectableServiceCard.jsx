@@ -4,6 +4,7 @@ import "./SelectableServiceCard.css";
 
 export default function SelectableServiceCard({ service, selected, onToggle }) {
   const { name, description, price, duration } = service ?? {};
+  const depositAmount = Number(service?.depositAmount) || 0;
 
   return (
     <div
@@ -27,6 +28,11 @@ export default function SelectableServiceCard({ service, selected, onToggle }) {
       </div>
       <div className="selectable-card__aside">
         <span className="selectable-card__price">{formatPrice(price)}</span>
+        {depositAmount > 0 && (
+          <span className="selectable-card__deposit">
+            Abono: {formatPrice(depositAmount)}
+          </span>
+        )}
         {duration != null && (
           <span className="selectable-card__duration">{duration} min</span>
         )}

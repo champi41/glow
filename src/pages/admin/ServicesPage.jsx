@@ -199,7 +199,10 @@ function ServiceModal({
 
           {showDepositAmount && (
             <div className="form-field">
-              <label>Abono requerido (CLP)</label>
+              <label>
+                Abono requerido (CLP) <span className="form-optional">(opcional)</span>
+              </label>
+
               <input
                 type="number"
                 placeholder="0"
@@ -208,7 +211,7 @@ function ServiceModal({
                 onChange={(e) =>
                   set(
                     "depositAmount",
-                    e.target.value === "" ? 0 : Number(e.target.value)
+                    e.target.value === "" ? 0 : Number(e.target.value),
                   )
                 }
               />

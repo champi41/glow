@@ -1,9 +1,5 @@
 /* src/pages/admin/BusinessProfilePage.css */
 
-.business-profile-page {
-  padding-bottom: 48px;
-}
-
 .business-profile-loading {
   padding: 48px 0;
   text-align: center;
@@ -16,16 +12,15 @@
 .business-profile-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 15px;
   max-width: 400px;
 }
 
 /* ── Logo (80px círculo) ── */
 .business-profile-logo-wrap {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .business-profile-logo-btn {
@@ -206,7 +201,7 @@
 .business-profile-form .form-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .business-profile-form .form-field label {
@@ -218,12 +213,12 @@
 .business-profile-form .form-field input,
 .business-profile-form .form-field select,
 .business-profile-form .form-field textarea {
-  padding: 11px 14px;
+  padding: 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 300;
   color: var(--color-text-primary);
   outline: none;

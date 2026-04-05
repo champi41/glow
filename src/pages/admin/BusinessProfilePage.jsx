@@ -9,8 +9,7 @@ import { Check, Camera, Image as ImageIcon, Sun, Moon } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./BusinessProfilePage.css";
 
-const CLOUD_NAME =
-  import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djghs9u2k";
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djghs9u2k";
 const DESC_MAX = 200;
 const DEFAULT_THEME = {
   mode: "light",
@@ -67,7 +66,7 @@ async function uploadToCloudinary(file, folder) {
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    { method: "POST", body: formData }
+    { method: "POST", body: formData },
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -199,8 +198,7 @@ export default function BusinessProfilePage() {
     return v.startsWith("#") ? v : `#${v}`;
   }
 
-  const recommendedList =
-    theme.mode === "dark" ? DARK_ACCENTS : LIGHT_ACCENTS;
+  const recommendedList = theme.mode === "dark" ? DARK_ACCENTS : LIGHT_ACCENTS;
   const accentLower = (theme.accent || "").toLowerCase();
   const isAccentRecommended = recommendedList.some(
     (c) => c.toLowerCase() === accentLower,
@@ -219,7 +217,7 @@ export default function BusinessProfilePage() {
     try {
       const secureUrl = await uploadToCloudinary(
         file,
-        `barberia/${tenantId}/logo`
+        `barberia/${tenantId}/logo`,
       );
       setForm((f) => ({ ...f, logoUrl: secureUrl }));
     } catch (err) {
@@ -243,7 +241,7 @@ export default function BusinessProfilePage() {
     try {
       const secureUrl = await uploadToCloudinary(
         file,
-        `barberia/${tenantId}/cover`
+        `barberia/${tenantId}/cover`,
       );
       setForm((f) => ({ ...f, coverUrl: secureUrl }));
     } catch (err) {
@@ -280,7 +278,10 @@ export default function BusinessProfilePage() {
         deposit: {
           enabled: deposit.enabled,
           type: deposit.type,
-          amount: deposit.enabled && deposit.type === "fixed" ? Number(deposit.amount) || 0 : 0,
+          amount:
+            deposit.enabled && deposit.type === "fixed"
+              ? Number(deposit.amount) || 0
+              : 0,
           bankInfo: deposit.enabled
             ? {
                 bank: deposit.bankInfo.bank?.trim() || "",
@@ -329,47 +330,6 @@ export default function BusinessProfilePage() {
           <h1 className="admin-page-title">Mi negocio</h1>
         </div>
         <form className="business-profile-form" onSubmit={handleSubmit}>
-          {/* Logo */}
-          <div className="business-profile-logo-wrap">
-            <button
-              type="button"
-              className="business-profile-logo-btn"
-              onClick={() => logoInputRef.current?.click()}
-              disabled={uploadingLogo}
-              aria-label="Cambiar logo"
-            >
-              <div
-                className={`business-profile-logo ${uploadingLogo ? "business-profile-logo--uploading" : ""}`}
-              >
-                {logoDisplay ? (
-                  <img
-                    src={logoDisplay}
-                    alt=""
-                    className="business-profile-logo__img"
-                  />
-                ) : (
-                  <span className="business-profile-logo__initial">
-                    {logoInitial}
-                  </span>
-                )}
-                <span className="business-profile-logo__camera" aria-hidden="true">
-                  <Camera size={16} />
-                </span>
-              </div>
-              {uploadingLogo && (
-                <span className="business-profile-logo__overlay">Subiendo...</span>
-              )}
-            </button>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              className="business-profile-file-input"
-              onChange={handleLogoChange}
-              aria-hidden="true"
-            />
-          </div>
-
           {/* Portada */}
           <div className="business-profile-cover-wrap">
             <label className="business-profile-cover-label">
@@ -398,7 +358,9 @@ export default function BusinessProfilePage() {
                 )}
               </div>
               {uploadingCover && (
-                <span className="business-profile-cover__overlay">Subiendo...</span>
+                <span className="business-profile-cover__overlay">
+                  Subiendo...
+                </span>
               )}
             </button>
             <input
@@ -413,16 +375,85 @@ export default function BusinessProfilePage() {
 
           {error && <p className="business-profile-error">{error}</p>}
 
-          <div className="form-field">
-            <label htmlFor="business-name">Nombre del negocio *</label>
+          {/* Logo */}
+          <div className="business-profile-logo-wrap">
+            <button
+              type="button"
+              className="business-profile-logo-btn"
+              onClick={() => logoInputRef.current?.click()}
+              disabled={uploadingLogo}
+              aria-label="Cambiar logo"
+            >
+              <div
+                className={`business-profile-logo ${uploadingLogo ? "business-profile-logo--uploading" : ""}`}
+              >
+                {logoDisplay ? (
+                  <img
+                    src={logoDisplay}
+                    alt=""
+                    className="business-profile-logo__img"
+                  />
+                ) : (
+                  <span className="business-profile-logo__initial">
+                    {logoInitial}
+                  </span>
+                )}
+                <span
+                  className="business-profile-logo__camera"
+                  aria-hidden="true"
+                >
+                  <Camera size={16} />
+                </span>
+              </div>
+              {uploadingLogo && (
+                <span className="business-profile-logo__overlay">
+                  Subiendo...
+                </span>
+              )}
+            </button>
             <input
-              id="business-name"
-              type="text"
-              value={form.name}
-              onChange={(e) => setField("name", e.target.value)}
-              placeholder="Nombre del negocio"
-              required
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="business-profile-file-input"
+              onChange={handleLogoChange}
+              aria-hidden="true"
             />
+
+            <div className="nombreIg">
+              <div className="form-field">
+                <label htmlFor="business-name">Nombre del negocio *</label>
+                <input
+                  id="business-name"
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setField("name", e.target.value)}
+                  placeholder="Nombre del negocio"
+                  required
+                />
+              </div>
+              <div className="form-field">
+                <label htmlFor="business-phone">Teléfono</label>
+                <input
+                  id="business-phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
+                  placeholder="+56 9 XXXX XXXX"
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="business-instagram">Instagram</label>
+                <input
+                  id="business-instagram"
+                  type="text"
+                  value={form.instagramUrl}
+                  onChange={(e) => setField("instagramUrl", e.target.value)}
+                  placeholder="@tulocal"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="form-field">
@@ -454,32 +485,8 @@ export default function BusinessProfilePage() {
             />
           </div>
 
-          <div className="form-field">
-            <label htmlFor="business-phone">Teléfono</label>
-            <input
-              id="business-phone"
-              type="tel"
-              value={form.phone}
-              onChange={(e) => setField("phone", e.target.value)}
-              placeholder="+56 9 XXXX XXXX"
-            />
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="business-instagram">Instagram</label>
-            <input
-              id="business-instagram"
-              type="text"
-              value={form.instagramUrl}
-              onChange={(e) => setField("instagramUrl", e.target.value)}
-              placeholder="@tulocal"
-            />
-          </div>
-
           <section className="business-profile-appearance">
-            <h3 className="business-profile-appearance__title">
-              Apariencia
-            </h3>
+            <h3 className="business-profile-appearance__title">Apariencia</h3>
             <p className="business-profile-appearance__subtitle">
               Elige el estilo visual que verán tus clientes al reservar.
             </p>
@@ -490,9 +497,7 @@ export default function BusinessProfilePage() {
                 type="button"
                 className={
                   "theme-mode-option" +
-                  (theme.mode === "light"
-                    ? " theme-mode-option--active"
-                    : "")
+                  (theme.mode === "light" ? " theme-mode-option--active" : "")
                 }
                 onClick={() => handleModeChange("light")}
               >
@@ -514,9 +519,7 @@ export default function BusinessProfilePage() {
                 type="button"
                 className={
                   "theme-mode-option" +
-                  (theme.mode === "dark"
-                    ? " theme-mode-option--active"
-                    : "")
+                  (theme.mode === "dark" ? " theme-mode-option--active" : "")
                 }
                 onClick={() => handleModeChange("dark")}
               >
@@ -544,8 +547,7 @@ export default function BusinessProfilePage() {
               </p>
               <div className="theme-recommended__swatches">
                 {recommendedList.map((color) => {
-                  const isActive =
-                    color.toLowerCase() === accentLower;
+                  const isActive = color.toLowerCase() === accentLower;
                   return (
                     <button
                       key={color}
@@ -624,8 +626,7 @@ export default function BusinessProfilePage() {
                 style={{
                   backgroundColor:
                     theme.mode === "light" ? "#ffffff" : "#1f1f1f",
-                  color:
-                    theme.mode === "light" ? "#1a1a1a" : "#f0f0f0",
+                  color: theme.mode === "light" ? "#1a1a1a" : "#f0f0f0",
                 }}
               >
                 <p
@@ -661,7 +662,8 @@ export default function BusinessProfilePage() {
           <section className="business-profile-deposit">
             <h3 className="business-profile-deposit__title">Abono</h3>
             <p className="business-profile-deposit__subtitle">
-              Opcional. Si lo activas, los clientes deberán transferir un abono y subir el comprobante para confirmar la reserva.
+              Opcional. Si lo activas, los clientes deberán transferir un abono
+              y subir el comprobante para confirmar la reserva.
             </p>
 
             <div className="business-profile-deposit-toggle-wrap">
@@ -683,7 +685,9 @@ export default function BusinessProfilePage() {
 
             {deposit.enabled && (
               <>
-                <p className="business-profile-deposit-type-label">Tipo de abono</p>
+                <p className="business-profile-deposit-type-label">
+                  Tipo de abono
+                </p>
                 <div className="inherit-toggle business-profile-deposit-type">
                   <button
                     type="button"
@@ -703,14 +707,19 @@ export default function BusinessProfilePage() {
 
                 {deposit.type === "fixed" && (
                   <div className="form-field">
-                    <label htmlFor="deposit-amount">Monto del abono (CLP)</label>
+                    <label htmlFor="deposit-amount">
+                      Monto del abono (CLP)
+                    </label>
                     <input
                       id="deposit-amount"
                       type="number"
                       min={0}
                       value={deposit.amount || ""}
                       onChange={(e) =>
-                        setDepositField("amount", e.target.value === "" ? 0 : Number(e.target.value))
+                        setDepositField(
+                          "amount",
+                          e.target.value === "" ? 0 : Number(e.target.value),
+                        )
                       }
                       placeholder="0"
                     />
@@ -723,7 +732,9 @@ export default function BusinessProfilePage() {
                   </p>
                 )}
 
-                <p className="business-profile-deposit-bank-label">Datos bancarios</p>
+                <p className="business-profile-deposit-bank-label">
+                  Datos bancarios
+                </p>
                 <div className="business-profile-deposit-bank">
                   <div className="form-field">
                     <label htmlFor="deposit-bank">Banco</label>
@@ -731,7 +742,9 @@ export default function BusinessProfilePage() {
                       id="deposit-bank"
                       type="text"
                       value={deposit.bankInfo.bank}
-                      onChange={(e) => setDepositField("bankInfo.bank", e.target.value)}
+                      onChange={(e) =>
+                        setDepositField("bankInfo.bank", e.target.value)
+                      }
                       placeholder="Banco Estado, Banco Chile, Mercado Pago..."
                     />
                   </div>
@@ -740,7 +753,9 @@ export default function BusinessProfilePage() {
                     <select
                       id="deposit-account-type"
                       value={deposit.bankInfo.accountType}
-                      onChange={(e) => setDepositField("bankInfo.accountType", e.target.value)}
+                      onChange={(e) =>
+                        setDepositField("bankInfo.accountType", e.target.value)
+                      }
                     >
                       <option value="">Selecciona</option>
                       {ACCOUNT_TYPES.map((opt) => (
@@ -751,12 +766,19 @@ export default function BusinessProfilePage() {
                     </select>
                   </div>
                   <div className="form-field">
-                    <label htmlFor="deposit-account-number">Número de cuenta</label>
+                    <label htmlFor="deposit-account-number">
+                      Número de cuenta
+                    </label>
                     <input
                       id="deposit-account-number"
                       type="text"
                       value={deposit.bankInfo.accountNumber}
-                      onChange={(e) => setDepositField("bankInfo.accountNumber", e.target.value)}
+                      onChange={(e) =>
+                        setDepositField(
+                          "bankInfo.accountNumber",
+                          e.target.value,
+                        )
+                      }
                       placeholder="Número de cuenta"
                     />
                   </div>
@@ -766,7 +788,9 @@ export default function BusinessProfilePage() {
                       id="deposit-rut"
                       type="text"
                       value={deposit.bankInfo.rut}
-                      onChange={(e) => setDepositField("bankInfo.rut", e.target.value)}
+                      onChange={(e) =>
+                        setDepositField("bankInfo.rut", e.target.value)
+                      }
                       placeholder="12.345.678-9"
                     />
                   </div>
@@ -776,7 +800,9 @@ export default function BusinessProfilePage() {
                       id="deposit-holder"
                       type="text"
                       value={deposit.bankInfo.holderName}
-                      onChange={(e) => setDepositField("bankInfo.holderName", e.target.value)}
+                      onChange={(e) =>
+                        setDepositField("bankInfo.holderName", e.target.value)
+                      }
                       placeholder="Nombre del titular"
                     />
                   </div>

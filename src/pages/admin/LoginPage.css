@@ -59,12 +59,12 @@
 }
 
 .form-field input {
-  padding: 13px 14px;
+  padding: 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 300;
   color: var(--color-text-primary);
   outline: none;
