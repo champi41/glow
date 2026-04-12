@@ -1,6 +1,6 @@
 {
-  "name": "MyWebSite",
-  "short_name": "MySite",
+  "name": "Slotti",
+  "short_name": "Slotti",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -15,7 +15,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#fff9ee",
+  "theme_color": "#2e1300",
+  "background_color": "#2e1300",
   "display": "standalone"
 }
