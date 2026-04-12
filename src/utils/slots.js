@@ -237,10 +237,18 @@ export function calcAvailableSlots({
 
       // Construir el orden con tiempos exactos
       let cursor = slotMin;
+      // asignar tiempos por servicio dentro del bloque del profesional
+      const svcEntries = services.map((sv) => {
+        const sStart = cursor;
+        const sEnd = cursor + (sv.duration || 0);
+        cursor = sEnd;
+        return { ...sv, start: minToTime(sStart), end: minToTime(sEnd) };
+      });
+
       const order = [
         {
           profId,
-          services,
+          services: svcEntries,
           start: minToTime(slotMin),
           end: minToTime(slotMin + total),
         },
@@ -281,9 +289,18 @@ export function calcAvailableSlots({
           break;
         }
 
+        // asignar tiempos por servicio dentro del bloque de este profesional
+        let sCursor = cursor;
+        const svcEntries = services.map((sv) => {
+          const sStart = sCursor;
+          const sEnd = sCursor + (sv.duration || 0);
+          sCursor = sEnd;
+          return { ...sv, start: minToTime(sStart), end: minToTime(sEnd) };
+        });
+
         order.push({
           profId,
-          services,
+          services: svcEntries,
           start: minToTime(cursor),
           end: minToTime(endMin),
         });

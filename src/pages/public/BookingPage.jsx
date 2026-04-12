@@ -9,8 +9,8 @@ import { useTenant } from "../../hooks/useTenant.js";
 import { useApplyTheme } from "../../hooks/useApplyTheme.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
 import { useServices } from "../../hooks/useServices.js";
-import { useBookingsByDate } from "../../hooks/useBookingsByDate.js";
-import { useBlocksByDate } from "../../hooks/useBlocksByDate.js";
+import { useBookingsByDateRealtime } from "../../hooks/useBookingsByDateRealtime.js";
+import { useBlocksByDateRealtime } from "../../hooks/useBlocksByDateRealtime.js";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { createBooking } from "../../lib/firestore/bookings.js";
@@ -25,7 +25,6 @@ import Spinner from "../../components/ui/Spinner.jsx";
 import StepServices from "./steps/StepServices.jsx";
 import StepProfessional from "./steps/StepProfessional.jsx";
 import StepDate from "./steps/StepDate.jsx";
-import StepTime from "./steps/StepTime.jsx";
 import StepClientForm from "./steps/StepClientForm.jsx";
 import StepConfirmation from "./steps/StepConfirmation.jsx";
 
@@ -71,8 +70,10 @@ export default function BookingPage() {
 
   const { data: professionals = [], isLoading: loadingProfs } =
     useProfessionals(tenantId);
-  const { data: allServices = [], isLoading: loadingServices } =
-    useServices(tenantId, { activeOnly: true });
+  const { data: allServices = [], isLoading: loadingServices } = useServices(
+    tenantId,
+    { activeOnly: true },
+  );
 
   // ── Estado del flujo ──────────────────────────────────────
   const [currentStep, setCurrentStep] = useState(null); // null hasta inicializar
@@ -90,11 +91,9 @@ export default function BookingPage() {
   const [submitError, setSubmitError] = useState(null);
 
   // ── Queries de disponibilidad (solo cuando hay fecha) ────
-  const { data: existingBookings = [] } = useBookingsByDate(
-    tenantId,
-    selectedDate,
-  );
-  const { data: existingBlocks = [] } = useBlocksByDate(tenantId, selectedDate);
+  // Realtime bookings and blocks for the selected date to keep slots in sync
+  const existingBookings = useBookingsByDateRealtime(tenantId, selectedDate);
+  const existingBlocks = useBlocksByDateRealtime(tenantId, selectedDate);
 
   // ── Inicialización desde query params ────────────────────
   useEffect(() => {
@@ -220,6 +219,18 @@ export default function BookingPage() {
     existingBlocks,
   ]);
 
+  // Si la selección actual deja de estar en los slots disponibles (otro cliente la reservó), invalidarla
+  useEffect(() => {
+    if (!selectedSlotData) return;
+    const stillAvailable = availableSlots.some(
+      (s) => s.startTime === selectedSlotData.startTime,
+    );
+    if (!stillAvailable) {
+      // limpiar selección para evitar continuar con un slot ya reservado
+      setSelectedSlotData(null);
+    }
+  }, [availableSlots, selectedSlotData]);
+
   // ── Pasos activos (para los dots de progreso) ────────────
   const activeSteps = useMemo(() => {
     const steps = [];
@@ -234,7 +245,8 @@ export default function BookingPage() {
     if (needsProfStep || !searchParams.get("services"))
       steps.push(STEP.PROFESSIONAL);
 
-    steps.push(STEP.DATE, STEP.TIME, STEP.CLIENT, STEP.CONFIRMATION);
+    // Usamos una vista combinada fecha+hora, tratamos DATE y TIME como un solo paso
+    steps.push(STEP.DATE, STEP.CLIENT, STEP.CONFIRMATION);
     return steps;
   }, [selectedServices, professionals, searchParams]);
 
@@ -265,7 +277,8 @@ export default function BookingPage() {
   function handleSelectDate(dateStr) {
     setSelectedDate(dateStr);
     setSelectedSlotData(null); // resetear slot al cambiar fecha
-    setCurrentStep(STEP.TIME);
+    // En la vista combinada permanecemos en el paso DATE
+    setCurrentStep(STEP.DATE);
   }
 
   function handleSelectSlot(slotData) {
@@ -323,9 +336,21 @@ export default function BookingPage() {
   async function handleConfirm(formData) {
     setIsSubmitting(true);
     setSubmitError(null);
+    // Intentamos abrir una nueva pestaña inmediatamente (evitar popup blocker)
+    let newWin = null;
+    try {
+      newWin = window.open("", "_blank");
+      if (newWin) {
+        // Mostrar breve mensaje de carga mientras se procesa
+        newWin.document.write("<p>Creando tu reserva...</p>");
+      }
+    } catch (err) {
+      newWin = null;
+    }
 
     try {
       // Construir items desde selectedSlotData.order
+      // Build booking items using per-service start/end provided by calcAvailableSlots
       const items = selectedSlotData.order.flatMap((group) =>
         group.services.map((service) => {
           const prof = professionals.find((p) => p.id === group.profId);
@@ -335,8 +360,8 @@ export default function BookingPage() {
             professionalId: group.profId,
             professionalName: prof?.name || "",
             professionalSlug: prof?.slug || "",
-            startTime: group.start,
-            endTime: group.end,
+            startTime: service.start || group.start,
+            endTime: service.end || group.end,
             price: service.price,
             duration: service.duration,
             depositAmount: Number(service.depositAmount) || 0,
@@ -374,11 +399,29 @@ export default function BookingPage() {
         depositProofUrl: null,
       });
       setCurrentStep(STEP.CONFIRMATION);
+
+      // Redirigir la nueva pestaña al estado de reserva
+      const statusUrl = `/${slug}/reserva/${result.id}`;
+      if (newWin) {
+        try {
+          newWin.location.href = statusUrl;
+        } catch (err) {
+          // Si no se puede redirigir (política), abrir en la misma pestaña
+          window.open(statusUrl, "_blank");
+        }
+      } else {
+        // Fallback: abrir en nueva pestaña si popup bloqueado
+        window.open(statusUrl, "_blank");
+      }
     } catch (err) {
       console.error("Error al crear reserva:", err);
       setSubmitError(
         "Ocurrió un error al guardar tu reserva. Intenta nuevamente.",
       );
+      // Cerrar la pestaña en blanco si existía
+      try {
+        if (newWin) newWin.close();
+      } catch (e) {}
     } finally {
       setIsSubmitting(false);
     }
@@ -471,7 +514,7 @@ export default function BookingPage() {
           />
         )}
 
-        {currentStep === STEP.DATE && (
+        {(currentStep === STEP.DATE || currentStep === STEP.TIME) && (
           <StepDate
             tenant={tenant}
             professionals={professionals}
@@ -479,17 +522,13 @@ export default function BookingPage() {
             selectedServices={selectedServices}
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
-          />
-        )}
-
-        {currentStep === STEP.TIME && (
-          <StepTime
+            // Props to render times inside StepDate
             availableSlots={availableSlots}
             selectedSlotData={selectedSlotData}
             onSelectSlot={handleSelectSlot}
             onContinue={handleContinueFromTime}
-            onChangeDate={() => setCurrentStep(STEP.DATE)}
             onChangeProfessional={() => setCurrentStep(STEP.PROFESSIONAL)}
+            onChangeDate={() => setCurrentStep(STEP.DATE)}
             isLoading={!selectedDate}
           />
         )}

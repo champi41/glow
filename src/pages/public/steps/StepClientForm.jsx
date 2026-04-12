@@ -58,7 +58,7 @@ export default function StepClientForm({
                 <span className="booking-summary__item-prof">
                   con {prof ? getFirstName(prof.name) : "—"}
                   {" · "}
-                  {group.start} – {group.end}
+                  {service.start || group.start} – {service.end || group.end}
                 </span>
               </div>
               <div className="booking-summary__item-right">
@@ -93,7 +93,9 @@ export default function StepClientForm({
             </div>
             <div className="booking-summary__grand-total">
               <span>Total</span>
-              <span className="booking-summary__total-price">{formatPrice(totalPrice)}</span>
+              <span className="booking-summary__total-price">
+                {formatPrice(totalPrice)}
+              </span>
             </div>
           </div>
         </div>

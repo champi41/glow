@@ -1,9 +1,15 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import BusinessPage from "./pages/public/BusinessPage.jsx";
 import ProfessionalPage from "./pages/public/ProfessionalPage.jsx";
 import BookingPage from "./pages/public/BookingPage.jsx";
-import ReviewPage from "./pages/public/ReviewPage.jsx";
+// ReviewPage removed; reviews now handled inside BookingStatusPage
 import BookingStatusPage from "./pages/public/BookingStatusPage.jsx";
 import AuthGuard from "./components/ui/AuthGuard.jsx";
 import LoginPage from "./pages/admin/LoginPage.jsx";
@@ -132,8 +138,11 @@ export default function App() {
         />
 
         <Route path="/:slug/pro/:profSlug" element={<ProfessionalPage />} />
-        <Route path="/:slug/resena/:bookingId" element={<ReviewPage />} />
-        <Route path="/:slug/reserva/:bookingId" element={<BookingStatusPage />} />
+        {/* Ruta de reseñas eliminada: ahora las reseñas se gestionan en BookingStatusPage */}
+        <Route
+          path="/:slug/reserva/:bookingId"
+          element={<BookingStatusPage />}
+        />
         <Route path="/:slug/reservar" element={<BookingPage />} />
         <Route path="/:slug" element={<BusinessPage />} />
         <Route path="*" element={<NotFound />} />

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { format, addDays, startOfToday, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import "./StepDate.css";
+import StepTime from "./StepTime.jsx";
 
 export default function StepDate({
   tenant,
@@ -12,6 +13,14 @@ export default function StepDate({
   selectedServices,
   selectedDate,
   onSelectDate,
+  // props para el render de horas
+  availableSlots,
+  selectedSlotData,
+  onSelectSlot,
+  onContinue,
+  onChangeDate,
+  onChangeProfessional,
+  isLoading,
 }) {
   const today = startOfToday();
 
@@ -97,6 +106,21 @@ export default function StepDate({
             {format(parseISO(selectedDate), "EEEE d 'de' MMMM", { locale: es })}
           </strong>
         </p>
+      )}
+
+      {/* Render de horas debajo del selector de fecha (vista unificada) */}
+      {selectedDate && (
+        <div className="step-date__times">
+          <StepTime
+            availableSlots={availableSlots}
+            selectedSlotData={selectedSlotData}
+            onSelectSlot={onSelectSlot}
+            onContinue={onContinue}
+            onChangeDate={onChangeDate}
+            onChangeProfessional={onChangeProfessional}
+            isLoading={isLoading}
+          />
+        </div>
       )}
     </div>
   );

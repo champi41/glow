@@ -10,10 +10,14 @@ import { useTenant } from "../../hooks/useTenant.js";
 import { useApplyTheme } from "../../hooks/useApplyTheme.js";
 import { formatPrice, getFirstName } from "../../utils/format.js";
 import { generateICS } from "../../utils/ics.js";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getReviewByBookingId,
+  createReview,
+} from "../../lib/firestore/reviews.js";
 import "./BookingStatusPage.css";
 
-const CLOUD_NAME =
-  import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djghs9u2k";
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djghs9u2k";
 
 async function uploadToCloudinary(file, folder) {
   const formData = new FormData();
@@ -23,7 +27,7 @@ async function uploadToCloudinary(file, folder) {
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    { method: "POST", body: formData }
+    { method: "POST", body: formData },
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -70,6 +74,12 @@ export default function BookingStatusPage() {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState(null);
+  const [reviewSuccess, setReviewSuccess] = useState(false);
 
   useApplyTheme(tenant);
 
@@ -92,10 +102,57 @@ export default function BookingStatusPage() {
       (err) => {
         console.error("BookingStatusPage onSnapshot error", err);
         setNotFound(true);
-      }
+      },
     );
     return () => unsub();
   }, [tenantId, bookingId]);
+
+  // Comprobar si ya existe reseña asociada a esta reserva
+  const { data: existingReview, isLoading: loadingExistingReview } = useQuery({
+    queryKey: ["review-by-booking", tenantId, bookingId],
+    queryFn: () => getReviewByBookingId(tenantId, bookingId),
+    enabled: !!tenantId && !!bookingId,
+  });
+
+  const items = booking?.items ?? [];
+  const professionalIds = [
+    ...new Set(items.map((i) => i.professionalId).filter(Boolean)),
+  ];
+  const professionalNames = [
+    ...new Map(
+      items?.map((i) => [i.professionalId, i.professionalName]),
+    ).values(),
+  ];
+
+  async function handleSubmitReview(e) {
+    e.preventDefault();
+    if (!tenantId || !booking) return;
+    if (existingReview) return; // ya existe
+    if (rating < 1) {
+      setReviewError("Por favor selecciona una calificación.");
+      return;
+    }
+    setReviewError(null);
+    setSubmittingReview(true);
+    try {
+      await createReview(tenantId, {
+        bookingId: booking.id,
+        clientName: booking.clientName,
+        clientPhone: booking.clientPhone,
+        professionalIds,
+        professionalNames,
+        serviceNames: items.map((i) => i.serviceName),
+        rating,
+        comment: comment.trim() || null,
+        date: booking.date,
+      });
+      setReviewSuccess(true);
+    } catch (err) {
+      setReviewError(err.message || "No se pudo enviar la reseña.");
+    } finally {
+      setSubmittingReview(false);
+    }
+  }
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -132,7 +189,7 @@ export default function BookingStatusPage() {
   async function handleCancelBooking() {
     if (!tenantId || !bookingId || !canCancel) return;
     const confirmed = window.confirm(
-      "¿Estás seguro de que quieres cancelar esta reserva?"
+      "¿Estás seguro de que quieres cancelar esta reserva?",
     );
     if (!confirmed) return;
 
@@ -188,13 +245,104 @@ export default function BookingStatusPage() {
           <h2 className="booking-status-page__subtitle">Mi reserva</h2>
         </header>
 
+        {/* Si la reserva está completada, mostrar formulario de reseña embebido */}
+        {booking.status === "completed" && (
+          <section className="booking-status__section booking-status__review review-page__inner">
+            <div className="review-page__box">
+              {!(existingReview || reviewSuccess) && (
+                <h3 className="review-page__title">Deja tu reseña</h3>
+              )}
+
+              {loadingExistingReview ? (
+                <p className="review-page__message">Cargando...</p>
+              ) : existingReview ? (
+                <p className="review-page__message">
+                  Ya dejaste una reseña para esta reserva. ¡Gracias!
+                </p>
+              ) : reviewSuccess ? (
+                <p className="review-page__message">
+                  ¡Gracias por tu reseña! Será publicada pronto.
+                </p>
+              ) : (
+                <form className="review-form" onSubmit={handleSubmitReview}>
+                  <p className="review-form__prompt">
+                    ¿Cómo fue tu experiencia
+                    {professionalNames.length
+                      ? ` con ${professionalNames.join(", ")}`
+                      : ""}
+                    ?
+                  </p>
+
+                  <div
+                    className="review-form__stars-wrap"
+                    onMouseLeave={() => setHoverRating(0)}
+                  >
+                    <div className="review-form__stars">
+                      {[1, 2, 3, 4, 5].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          className="review-form__star"
+                          onClick={() => setRating(v)}
+                          onMouseEnter={() => setHoverRating(v)}
+                          aria-pressed={rating >= v}
+                        >
+                          <span
+                            className="review-form__star-inner"
+                            style={{
+                              color:
+                                (hoverRating || rating) >= v
+                                  ? "#f4b942"
+                                  : "var(--color-text-tertiary)",
+                            }}
+                          >
+                            ★
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="review-form__field">
+                    <textarea
+                      className="review-form__comment"
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value.slice(0, 300))}
+                      placeholder="Cuéntanos sobre tu experiencia... (opcional)"
+                      rows={4}
+                    />
+                    <div className="review-form__count">
+                      {comment.length}/300
+                    </div>
+                  </div>
+
+                  {reviewError && (
+                    <p className="review-form__error">{reviewError}</p>
+                  )}
+                  <div className="review-form__submit">
+                    <button
+                      className="btn-primary"
+                      type="submit"
+                      disabled={submittingReview || rating < 1}
+                    >
+                      {submittingReview ? "Enviando..." : "Enviar reseña"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Badges de estado */}
         <section className="booking-status__section">
           <div
             className={`booking-status__badge ${statusConfig.class}`}
             role="status"
           >
-            <span className="booking-status__badge-icon">{statusConfig.icon}</span>
+            <span className="booking-status__badge-icon">
+              {statusConfig.icon}
+            </span>
             {statusConfig.label}
           </div>
 
@@ -292,7 +440,9 @@ export default function BookingStatusPage() {
                     </div>
                   )}
                   {uploadError && (
-                    <p className="booking-status__upload-error">{uploadError}</p>
+                    <p className="booking-status__upload-error">
+                      {uploadError}
+                    </p>
                   )}
                 </div>
               </>

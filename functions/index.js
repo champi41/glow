@@ -55,6 +55,7 @@ exports.onBookingCreated = onDocumentCreated(
       .map((i) => i.serviceName)
       .join(", ");
     const timeStr = booking.items?.[0]?.startTime || "";
+    const dateStr = booking.dateStr || booking.date || "";
 
     for (const profId of profIds) {
       const subscription = await getPushSubscription(tenantId, profId);
@@ -62,7 +63,7 @@ exports.onBookingCreated = onDocumentCreated(
 
       await sendPushNotification(subscription, {
         title: "📅 Nueva reserva",
-        body: `${booking.clientName} · ${serviceNames} a las ${timeStr}`,
+        body: `${booking.clientName} · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
         data: { url: "/admin/reservas" },
@@ -92,6 +93,8 @@ exports.onBookingCancelled = onDocumentUpdated(
       .map((i) => i.serviceName)
       .join(", ");
     const timeStr = after.items?.[0]?.startTime || "";
+    const dateStr = after.dateStr || after.date || "";
+    const dateStr = after.dateStr || after.date || "";
 
     for (const profId of profIds) {
       const subscription = await getPushSubscription(tenantId, profId);
@@ -99,7 +102,7 @@ exports.onBookingCancelled = onDocumentUpdated(
 
       await sendPushNotification(subscription, {
         title: "❌ Reserva cancelada",
-        body: `${after.clientName} canceló · ${serviceNames} a las ${timeStr}`,
+        body: `${after.clientName} canceló · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
         data: { url: "/admin/reservas" },
@@ -138,7 +141,7 @@ exports.onDepositProofUploaded = onDocumentUpdated(
 
       await sendPushNotification(subscription, {
         title: "📎 Comprobante de abono",
-        body: `${after.clientName} subió el comprobante · ${serviceNames} a las ${timeStr}`,
+        body: `${after.clientName} subió el comprobante · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
         data: { url: "/admin/reservas" },

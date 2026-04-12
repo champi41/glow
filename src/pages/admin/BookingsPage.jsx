@@ -216,67 +216,69 @@ function BookingCard({
           )}
 
           {/* Acciones según estado (ocultar si abono uploaded: ya hay acciones en sección Abono) */}
-          {!(booking.depositRequired && booking.depositStatus === "uploaded") && (
-          <div className="booking-detail__actions">
-            {booking.status === "pending" && (
-              <>
-                <button
-                  className="action-btn action-btn--confirm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateStatus(booking.id, "confirmed");
-                  }}
-                >
-                  <CheckCircle2 size={15} /> Confirmar
-                </button>
-                <button
-                  className="action-btn action-btn--cancel"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateStatus(booking.id, "cancelled");
-                  }}
-                >
-                  <XCircle size={15} /> Cancelar
-                </button>
-              </>
-            )}
-            {booking.status === "confirmed" && (
-              <>
-                <button
-                  className="action-btn action-btn--complete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateStatus(booking.id, "completed");
-                  }}
-                >
-                  <CheckCircle2 size={15} /> Marcar completada
-                </button>
-                <button
-                  className="action-btn action-btn--cancel"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateStatus(booking.id, "cancelled");
-                  }}
-                >
-                  <XCircle size={15} /> Cancelar
-                </button>
-              </>
-            )}
-            {(booking.status === "completed" ||
-              booking.status === "cancelled") && (
-              <p className="booking-detail__final">
-                {booking.status === "completed"
-                  ? "Reserva completada"
-                  : "Reserva cancelada"}
-              </p>
-            )}
-          </div>
+          {!(
+            booking.depositRequired && booking.depositStatus === "uploaded"
+          ) && (
+            <div className="booking-detail__actions">
+              {booking.status === "pending" && (
+                <>
+                  <button
+                    className="action-btn action-btn--confirm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateStatus(booking.id, "confirmed");
+                    }}
+                  >
+                    <CheckCircle2 size={15} /> Confirmar
+                  </button>
+                  <button
+                    className="action-btn action-btn--cancel"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateStatus(booking.id, "cancelled");
+                    }}
+                  >
+                    <XCircle size={15} /> Cancelar
+                  </button>
+                </>
+              )}
+              {booking.status === "confirmed" && (
+                <>
+                  <button
+                    className="action-btn action-btn--complete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateStatus(booking.id, "completed");
+                    }}
+                  >
+                    <CheckCircle2 size={15} /> Marcar completada
+                  </button>
+                  <button
+                    className="action-btn action-btn--cancel"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateStatus(booking.id, "cancelled");
+                    }}
+                  >
+                    <XCircle size={15} /> Cancelar
+                  </button>
+                </>
+              )}
+              {(booking.status === "completed" ||
+                booking.status === "cancelled") && (
+                <p className="booking-detail__final">
+                  {booking.status === "completed"
+                    ? "Reserva completada"
+                    : "Reserva cancelada"}
+                </p>
+              )}
+            </div>
           )}
 
           {booking.status === "completed" && tenantSlug && (
             <a
               href={`https://wa.me/${booking.clientPhone?.replace(/\D/g, "")}?text=${encodeURIComponent(
-                `Hola ${booking.clientName} 👋 Gracias por visitarnos. ¿Nos dejas una reseña? Solo toma un minuto: ${(import.meta.env.VITE_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "")}/${tenantSlug}/resena/${booking.id}`
+                `Hola ${booking.clientName} 👋 Gracias por visitarnos. ¿Nos dejas una reseña? Solo toma un minuto: ${(import.meta.env.VITE_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "")}/${tenantSlug}/reserva/${booking.id}`,
               )}`}
               target="_blank"
               rel="noreferrer"
@@ -367,12 +369,12 @@ export default function BookingsPage() {
         <div className="admin-page-header">
           <h1 className="admin-page-title">Reservas</h1>
           {/* Selector de fecha */}
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="date-input"
-            />  
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="date-input"
+          />
         </div>
 
         {/* Filtros de estado */}
