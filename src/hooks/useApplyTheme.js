@@ -16,9 +16,7 @@ export function useApplyTheme(tenant) {
       "--color-text-primary": isLight ? "#1a1a1a" : "#f0f0f0",
       "--color-text-secondary": isLight ? "#6b6560" : "#a0a0a0",
       "--color-text-tertiary": isLight ? "#a09b96" : "#666666",
-      "--color-border": isLight
-        ? "rgba(0,0,0,0.10)"
-        : "rgba(255,255,255,0.10)",
+      "--color-border": isLight ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.10)",
       "--color-separator": isLight
         ? "rgba(0,0,0,0.06)"
         : "rgba(255,255,255,0.06)",
@@ -35,10 +33,42 @@ export function useApplyTheme(tenant) {
       root.style.setProperty(key, value);
     });
 
+    // Aplicar título y favicon del tenant si están disponibles
+    const previousTitle = document.title;
+    if (tenant.name) document.title = tenant.name;
+
+    const iconLink = document.querySelector('link[rel="icon"]');
+    const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+    const previousIconHref = iconLink?.getAttribute("href");
+    const previousAppleHref = appleLink?.getAttribute("href");
+    if (tenant.logoUrl) {
+      try {
+        if (iconLink) iconLink.setAttribute("href", tenant.logoUrl);
+        if (appleLink) appleLink.setAttribute("href", tenant.logoUrl);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // Actualizar meta theme-color si tenant.theme tiene accent
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const previousMetaTheme = metaTheme?.getAttribute("content");
+    if (tenant.theme?.accent && metaTheme) {
+      metaTheme.setAttribute("content", tenant.theme.accent);
+    }
+
     return () => {
       Object.keys(vars).forEach((key) => {
         root.style.removeProperty(key);
       });
+      // restaurar título y favicon
+      if (previousTitle) document.title = previousTitle;
+      if (iconLink && previousIconHref)
+        iconLink.setAttribute("href", previousIconHref);
+      if (appleLink && previousAppleHref)
+        appleLink.setAttribute("href", previousAppleHref);
+      if (metaTheme && previousMetaTheme)
+        metaTheme.setAttribute("content", previousMetaTheme);
     };
   }, [tenant]);
 }
@@ -52,4 +82,3 @@ function hexToRgba(hex, alpha) {
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
-

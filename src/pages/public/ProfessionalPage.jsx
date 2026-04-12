@@ -35,6 +35,44 @@ export default function ProfessionalPage() {
 
   useApplyTheme(tenant);
 
+  // Ajustar título y favicon para la página del profesional
+  useEffect(() => {
+    if (!tenant) return;
+
+    const previousTitle = document.title;
+    const iconLink = document.querySelector('link[rel="icon"]');
+    const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+    const previousIconHref = iconLink?.getAttribute("href");
+    const previousAppleHref = appleLink?.getAttribute("href");
+
+    const platformDefaultTitle = previousTitle || "Slotti";
+    const platformDefaultIcon = previousIconHref || "/favicon.ico";
+
+    const profName = professional?.name || null;
+    const profPhoto = professional?.photoUrl || professional?.avatarUrl || null;
+
+    // Choose icon: professional photo -> tenant logo -> platform default
+    const chosenIcon = profPhoto || tenant.logoUrl || platformDefaultIcon;
+    const chosenTitle = profName || tenant?.name || platformDefaultTitle;
+
+    try {
+      if (chosenTitle) document.title = chosenTitle;
+      if (iconLink && chosenIcon) iconLink.setAttribute("href", chosenIcon);
+      if (appleLink && chosenIcon) appleLink.setAttribute("href", chosenIcon);
+    } catch (e) {
+      // ignore DOM errors
+    }
+
+    return () => {
+      // restore previous values
+      if (previousTitle) document.title = previousTitle;
+      if (iconLink && previousIconHref)
+        iconLink.setAttribute("href", previousIconHref);
+      if (appleLink && previousAppleHref)
+        appleLink.setAttribute("href", previousAppleHref);
+    };
+  }, [tenant, professional]);
+
   const { data: reviews = [] } = useApprovedReviewsByProf(
     tenant?.id,
     professional?.id,
