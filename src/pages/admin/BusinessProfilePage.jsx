@@ -253,6 +253,22 @@ export default function BusinessProfilePage() {
     }
   }
 
+  async function handleRemoveCover() {
+    if (!tenantId) return;
+    if (!confirm("Quitar la foto de portada?")) return;
+    setUploadingCover(true);
+    setError(null);
+    try {
+      await updateDoc(doc(db, "tenants", tenantId), { coverUrl: null });
+      setForm((f) => ({ ...f, coverUrl: null }));
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo quitar la portada.");
+    } finally {
+      setUploadingCover(false);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!tenantId) return;
@@ -371,54 +387,93 @@ export default function BusinessProfilePage() {
               onChange={handleCoverChange}
               aria-hidden="true"
             />
+            {form.coverUrl && (
+              <button
+                type="button"
+                className="business-profile-cover-remove"
+                onClick={handleRemoveCover}
+                disabled={uploadingCover}
+                aria-label="Quitar portada"
+              >
+                Quitar portada
+              </button>
+            )}
           </div>
 
           {error && <p className="business-profile-error">{error}</p>}
 
           {/* Logo */}
           <div className="business-profile-logo-wrap">
-            <button
-              type="button"
-              className="business-profile-logo-btn"
-              onClick={() => logoInputRef.current?.click()}
-              disabled={uploadingLogo}
-              aria-label="Cambiar logo"
-            >
-              <div
-                className={`business-profile-logo ${uploadingLogo ? "business-profile-logo--uploading" : ""}`}
+            <div className="logobtn">
+              <button
+                type="button"
+                className="business-profile-logo-btn"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={uploadingLogo}
+                aria-label="Cambiar logo"
               >
-                {logoDisplay ? (
-                  <img
-                    src={logoDisplay}
-                    alt=""
-                    className="business-profile-logo__img"
-                  />
-                ) : (
-                  <span className="business-profile-logo__initial">
-                    {logoInitial}
+                <div
+                  className={`business-profile-logo ${uploadingLogo ? "business-profile-logo--uploading" : ""}`}
+                >
+                  {logoDisplay ? (
+                    <img
+                      src={logoDisplay}
+                      alt=""
+                      className="business-profile-logo__img"
+                    />
+                  ) : (
+                    <span className="business-profile-logo__initial">
+                      {logoInitial}
+                    </span>
+                  )}
+                  <span
+                    className="business-profile-logo__camera"
+                    aria-hidden="true"
+                  >
+                    <Camera size={16} />
+                  </span>
+                </div>
+                {uploadingLogo && (
+                  <span className="business-profile-logo__overlay">
+                    Subiendo...
                   </span>
                 )}
-                <span
-                  className="business-profile-logo__camera"
-                  aria-hidden="true"
+              </button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="business-profile-file-input"
+                onChange={handleLogoChange}
+                aria-hidden="true"
+              />
+
+              {form.logoUrl && (
+                <button
+                  type="button"
+                  className="business-profile-logo-remove"
+                  onClick={async () => {
+                    if (!tenantId) return;
+                    if (!confirm("Quitar el logo?")) return;
+                    setUploadingLogo(true);
+                    try {
+                      await updateDoc(doc(db, "tenants", tenantId), {
+                        logoUrl: null,
+                      });
+                      setForm((f) => ({ ...f, logoUrl: null }));
+                    } catch (err) {
+                      console.error(err);
+                      setError("No se pudo quitar el logo.");
+                    } finally {
+                      setUploadingLogo(false);
+                    }
+                  }}
+                  aria-label="Quitar logo"
                 >
-                  <Camera size={16} />
-                </span>
-              </div>
-              {uploadingLogo && (
-                <span className="business-profile-logo__overlay">
-                  Subiendo...
-                </span>
+                  Quitar logo
+                </button>
               )}
-            </button>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              className="business-profile-file-input"
-              onChange={handleLogoChange}
-              aria-hidden="true"
-            />
+            </div>
 
             <div className="nombreIg">
               <div className="form-field">

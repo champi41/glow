@@ -44,7 +44,7 @@
   align-items: center;
   gap: 10px;
 }
-.nombreIg{
+.nombreIg {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -126,6 +126,20 @@
   white-space: nowrap;
 }
 
+.profile-avatar-remove {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.profile-avatar-remove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .profile-file-input {
   position: absolute;
   width: 0;
@@ -172,7 +186,9 @@
   font-weight: 300;
   color: var(--color-text-primary);
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
   resize: none;
 }
 
@@ -322,7 +338,9 @@
   justify-content: center;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .profile-portfolio__add:hover {

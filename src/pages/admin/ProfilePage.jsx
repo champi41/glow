@@ -5,7 +5,16 @@ import { useNavigate } from "react-router-dom";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../config/firebase.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { Check, Camera, Plus, X, LogOut, Bell, ToggleLeft, ToggleRight } from "lucide-react";
+import {
+  Check,
+  Camera,
+  Plus,
+  X,
+  LogOut,
+  Bell,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
 import { usePushNotifications } from "../../hooks/usePushNotifications.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./ProfilePage.css";
@@ -14,7 +23,12 @@ const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const BIO_MAX = 160;
 const PORTFOLIO_MAX = 10;
 
-async function uploadToCloudinary(file, tenantId, professionalId, subfolder = "") {
+async function uploadToCloudinary(
+  file,
+  tenantId,
+  professionalId,
+  subfolder = "",
+) {
   const folder = subfolder
     ? `barberia/${tenantId}/${professionalId}/${subfolder}`
     : `barberia/${tenantId}/${professionalId}`;
@@ -25,7 +39,7 @@ async function uploadToCloudinary(file, tenantId, professionalId, subfolder = ""
 
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-    { method: "POST", body: formData }
+    { method: "POST", body: formData },
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -76,7 +90,7 @@ export default function ProfilePage() {
     (async () => {
       try {
         const snap = await getDoc(
-          doc(db, "tenants", tenantId, "professionals", professionalId)
+          doc(db, "tenants", tenantId, "professionals", professionalId),
         );
         if (cancelled) return;
         if (snap.exists()) {
@@ -86,7 +100,9 @@ export default function ProfilePage() {
             bio: d.bio ?? "",
             instagram: d.instagram ?? "",
             photoUrl: d.photoUrl ?? "",
-            portfolioUrls: Array.isArray(d.portfolioUrls) ? d.portfolioUrls : [],
+            portfolioUrls: Array.isArray(d.portfolioUrls)
+              ? d.portfolioUrls
+              : [],
           });
         }
       } catch (err) {
@@ -95,7 +111,9 @@ export default function ProfilePage() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [tenantId, professionalId]);
 
   function setField(field, value) {
@@ -104,6 +122,25 @@ export default function ProfilePage() {
 
   function handleAvatarClick() {
     fileInputRef.current?.click();
+  }
+
+  async function handleRemovePhoto() {
+    if (!tenantId || !professionalId) return;
+    if (!confirm("Quitar la foto de perfil?")) return;
+    setUploading(true);
+    setError(null);
+    try {
+      await updateDoc(
+        doc(db, "tenants", tenantId, "professionals", professionalId),
+        { photoUrl: null },
+      );
+      setForm((f) => ({ ...f, photoUrl: null }));
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo quitar la foto.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleFileChange(e) {
@@ -116,7 +153,11 @@ export default function ProfilePage() {
     setUploading(true);
     setError(null);
     try {
-      const secureUrl = await uploadToCloudinary(file, tenantId, professionalId);
+      const secureUrl = await uploadToCloudinary(
+        file,
+        tenantId,
+        professionalId,
+      );
       setForm((f) => ({ ...f, photoUrl: secureUrl }));
     } catch (err) {
       setError(err.message || "Error al subir la foto");
@@ -154,7 +195,7 @@ export default function ProfilePage() {
         file,
         tenantId,
         professionalId,
-        `portfolio/${timestamp}`
+        `portfolio/${timestamp}`,
       );
       setForm((f) => ({
         ...f,
@@ -181,7 +222,7 @@ export default function ProfilePage() {
           instagram: form.instagram.trim() || null,
           photoUrl: form.photoUrl || null,
           portfolioUrls: form.portfolioUrls?.length ? form.portfolioUrls : [],
-        }
+        },
       );
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -242,7 +283,9 @@ export default function ProfilePage() {
   }
 
   const displayPhoto = previewUrl || form.photoUrl;
-  const initial = form.name.trim() ? form.name.trim().charAt(0).toUpperCase() : "?";
+  const initial = form.name.trim()
+    ? form.name.trim().charAt(0).toUpperCase()
+    : "?";
 
   return (
     <AdminLayout title="Mi perfil">
@@ -261,41 +304,57 @@ export default function ProfilePage() {
         <form className="profile-form" onSubmit={handleSubmit}>
           {/* Avatar */}
           <div className="profile-avatar-wrap">
-            <button
-              type="button"
-              className="profile-avatar-btn"
-              onClick={handleAvatarClick}
-              disabled={uploading}
-              aria-label="Cambiar foto"
-            >
-              <div
-                className={`profile-avatar ${uploading ? "profile-avatar--uploading" : ""}`}
+            <div className="logobtn">
+              <button
+                type="button"
+                className="profile-avatar-btn"
+                onClick={handleAvatarClick}
+                disabled={uploading}
+                aria-label="Cambiar foto"
               >
-                {displayPhoto ? (
-                  <img
-                    src={displayPhoto}
-                    alt=""
-                    className="profile-avatar__img"
-                  />
-                ) : (
-                  <span className="profile-avatar__initial">{initial}</span>
+                <div
+                  className={`profile-avatar ${uploading ? "profile-avatar--uploading" : ""}`}
+                >
+                  {displayPhoto ? (
+                    <img
+                      src={displayPhoto}
+                      alt=""
+                      className="profile-avatar__img"
+                    />
+                  ) : (
+                    <span className="profile-avatar__initial">{initial}</span>
+                  )}
+                  <span className="profile-avatar__camera" aria-hidden="true">
+                    <Camera size={16} />
+                  </span>
+                </div>
+                {uploading && (
+                  <span className="profile-avatar__overlay">Subiendo...</span>
                 )}
-                <span className="profile-avatar__camera" aria-hidden="true">
-                  <Camera size={16} />
-                </span>
-              </div>
-              {uploading && (
-                <span className="profile-avatar__overlay">Subiendo...</span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="profile-file-input"
+                onChange={handleFileChange}
+                aria-hidden="true"
+              />
+              {form.photoUrl && (
+                <button
+                  type="button"
+                  className="profile-avatar-remove"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    await handleRemovePhoto();
+                  }}
+                  disabled={uploading}
+                  aria-label="Quitar foto"
+                >
+                  Quitar foto
+                </button>
               )}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="profile-file-input"
-              onChange={handleFileChange}
-              aria-hidden="true"
-            />
+            </div>
             <div className="nombreIg">
               <div className="form-field">
                 <label htmlFor="profile-name">Nombre</label>
