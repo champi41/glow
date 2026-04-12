@@ -428,7 +428,6 @@ export default function AgendaPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   const { data: tenant } = useTenantById(tenantId);
-  console.log("tenant:", tenant, "tenantId:", tenantId);
   const { data: professionals = [] } = useProfessionals(tenantId);
 
   // Días de la semana actual

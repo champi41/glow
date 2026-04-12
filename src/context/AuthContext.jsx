@@ -22,7 +22,6 @@ export function AuthProvider({ children }) {
   // Escuchar cambios de sesión
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("Auth state changed:", firebaseUser?.uid);
       if (firebaseUser) {
         try {
           const profileDoc = await getDoc(doc(db, "users", firebaseUser.uid));

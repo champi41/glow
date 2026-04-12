@@ -19,9 +19,7 @@ export async function getTenantBySlug(slug) {
 }
 
 export async function getTenantById(tenantId) {
-  console.log("getTenantById llamado con:", tenantId);
   const snap = await getDoc(doc(db, "tenants", tenantId));
-  console.log("snap exists:", snap.exists(), snap.data());
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
 }
