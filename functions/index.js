@@ -94,7 +94,6 @@ exports.onBookingCancelled = onDocumentUpdated(
       .join(", ");
     const timeStr = after.items?.[0]?.startTime || "";
     const dateStr = after.dateStr || after.date || "";
-    const dateStr = after.dateStr || after.date || "";
 
     for (const profId of profIds) {
       const subscription = await getPushSubscription(tenantId, profId);
@@ -141,7 +140,7 @@ exports.onDepositProofUploaded = onDocumentUpdated(
 
       await sendPushNotification(subscription, {
         title: "📎 Comprobante de abono",
-        body: `${after.clientName} subió el comprobante · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`,
+        body: `${after.clientName} subió el comprobante · ${serviceNames} a las ${timeStr}`,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
         data: { url: "/admin/reservas" },
