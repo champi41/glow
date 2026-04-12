@@ -200,7 +200,8 @@ function ServiceModal({
           {showDepositAmount && (
             <div className="form-field">
               <label>
-                Abono requerido (CLP) <span className="form-optional">(opcional)</span>
+                Abono requerido (CLP){" "}
+                <span className="form-optional">(opcional)</span>
               </label>
 
               <input
@@ -373,7 +374,7 @@ function ServiceCard({ service, professionals, onEdit, onToggle }) {
 }
 
 // ─── Página principal ─────────────────────────────────────────
-export default function ServicesPage() {
+export default function ServicesPage({ embedded = false }) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
 
@@ -453,19 +454,12 @@ export default function ServicesPage() {
     }
   }
 
-  return (
-    <AdminLayout title="Servicios">
+  const content = (
+    <>
       <div className="services-page">
-        <div className="serviciosHeader">
-          <h1 className="admin-page-title">Servicios</h1>
-          {/* Botón crear */}
-          <button
-            className="services-page__new"
-            onClick={openCreate}
-          >
-            <Plus size={16} /> Nuevo servicio
-          </button>
-        </div>
+        <button className="services-page__new" onClick={openCreate}>
+          <Plus size={16} /> Nuevo servicio
+        </button>
 
         {/* Lista agrupada por categoría */}
         {grouped.size === 0 ? (
@@ -503,6 +497,10 @@ export default function ServicesPage() {
           onClose={() => setModalOpen(false)}
         />
       )}
-    </AdminLayout>
+    </>
   );
+
+  if (embedded) return content;
+
+  return <AdminLayout title="Servicios">{content}</AdminLayout>;
 }

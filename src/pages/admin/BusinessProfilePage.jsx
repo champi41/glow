@@ -1,11 +1,27 @@
 // src/pages/admin/BusinessProfilePage.jsx
 
 import { useState, useEffect, useRef } from "react";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { useQueryClient } from "@tanstack/react-query";
 import { db } from "../../config/firebase.js";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { Check, Camera, Image as ImageIcon, Sun, Moon } from "lucide-react";
+import { useTenantById } from "../../hooks/useTenant.js";
+import {
+  Check,
+  Camera,
+  Image as ImageIcon,
+  Sun,
+  Moon,
+  Palette,
+  Star,
+  Scissors,
+  Clock,
+  Store,
+  ChevronDown,
+} from "lucide-react";
+import ServicesPage from "./ServicesPage.jsx";
+import SchedulePage from "./SchedulePage.jsx";
+import ReviewsPage from "./ReviewsPage.jsx";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./BusinessProfilePage.css";
 
@@ -58,6 +74,14 @@ const DARK_ACCENTS = [
   "#ff6b9d",
 ];
 
+const SECTION_OPTIONS = [
+  { key: "general", label: "General", icon: Store },
+  { key: "appearance", label: "Apariencia", icon: Palette },
+  { key: "services", label: "Servicios", icon: Scissors },
+  { key: "schedule", label: "Horario", icon: Clock },
+  { key: "reviews", label: "Reseñas", icon: Star },
+];
+
 async function uploadToCloudinary(file, folder) {
   const formData = new FormData();
   formData.append("file", file);
@@ -77,12 +101,17 @@ async function uploadToCloudinary(file, folder) {
 }
 
 export default function BusinessProfilePage() {
-  const { tenantId } = useAuth();
+  const { tenantId, canManage } = useAuth();
   const queryClient = useQueryClient();
+  const {
+    data: tenant,
+    isLoading: tenantLoading,
+    isError: tenantIsError,
+  } = useTenantById(tenantId);
   const logoInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const hydratedTenantRef = useRef(null);
 
-  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -103,58 +132,75 @@ export default function BusinessProfilePage() {
   const [error, setError] = useState(null);
   const [deposit, setDeposit] = useState(DEFAULT_DEPOSIT);
 
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("general");
+  const selectorRef = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!selectorRef.current) return;
+      if (!selectorRef.current.contains(e.target)) setSelectorOpen(false);
+    }
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, []);
+
+  function handleSelect(sectionKey) {
+    setSelectorOpen(false);
+    setActiveSection(sectionKey);
+  }
+
   useEffect(() => {
     if (!tenantId) {
-      setLoading(false);
+      hydratedTenantRef.current = null;
       return;
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db, "tenants", tenantId));
-        if (cancelled) return;
-        if (snap.exists()) {
-          const d = snap.data();
-          setForm({
-            name: d.name ?? "",
-            description: d.description ?? "",
-            address: d.address ?? "",
-            phone: d.phone ?? "",
-            instagramUrl: d.instagramUrl ?? "",
-            logoUrl: d.logoUrl ?? "",
-            coverUrl: d.coverUrl ?? "",
-          });
-          const t = d.theme || {};
-          const mode = t.mode === "dark" ? "dark" : "light";
-          const accent = t.accent || DEFAULT_THEME.accent;
-          setTheme({ mode, accent });
-          setCustomAccent(accent);
-          const dep = d.deposit;
-          if (dep && typeof dep === "object") {
-            setDeposit({
-              enabled: Boolean(dep.enabled),
-              type: dep.type === "per_service" ? "per_service" : "fixed",
-              amount: Number(dep.amount) || 0,
-              bankInfo: {
-                bank: dep.bankInfo?.bank ?? "",
-                accountType: dep.bankInfo?.accountType ?? "",
-                accountNumber: dep.bankInfo?.accountNumber ?? "",
-                rut: dep.bankInfo?.rut ?? "",
-                holderName: dep.bankInfo?.holderName ?? "",
-              },
-            });
-          }
-        }
-      } catch (err) {
-        if (!cancelled) setError("No se pudo cargar el negocio.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId]);
+
+    // Hidratar una sola vez por tenant para evitar sobreescribir ediciones locales.
+    if (!tenant || hydratedTenantRef.current === tenantId) return;
+
+    setForm({
+      name: tenant.name ?? "",
+      description: tenant.description ?? "",
+      address: tenant.address ?? "",
+      phone: tenant.phone ?? "",
+      instagramUrl: tenant.instagramUrl ?? "",
+      logoUrl: tenant.logoUrl ?? "",
+      coverUrl: tenant.coverUrl ?? "",
+    });
+
+    const t = tenant.theme || {};
+    const mode = t.mode === "dark" ? "dark" : "light";
+    const accent = t.accent || DEFAULT_THEME.accent;
+    setTheme({ mode, accent });
+    setCustomAccent(accent);
+
+    const dep = tenant.deposit;
+    if (dep && typeof dep === "object") {
+      setDeposit({
+        enabled: Boolean(dep.enabled),
+        type: dep.type === "per_service" ? "per_service" : "fixed",
+        amount: Number(dep.amount) || 0,
+        bankInfo: {
+          bank: dep.bankInfo?.bank ?? "",
+          accountType: dep.bankInfo?.accountType ?? "",
+          accountNumber: dep.bankInfo?.accountNumber ?? "",
+          rut: dep.bankInfo?.rut ?? "",
+          holderName: dep.bankInfo?.holderName ?? "",
+        },
+      });
+    } else {
+      setDeposit(DEFAULT_DEPOSIT);
+    }
+
+    hydratedTenantRef.current = tenantId;
+  }, [tenantId, tenant]);
+
+  useEffect(() => {
+    if (tenantIsError) {
+      setError("No se pudo cargar el negocio.");
+    }
+  }, [tenantIsError]);
 
   function setField(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -319,7 +365,7 @@ export default function BusinessProfilePage() {
     }
   }
 
-  if (loading) {
+  if (tenantLoading) {
     return (
       <AdminLayout title="Mi negocio">
         <div className="business-profile-page">
@@ -338,550 +384,628 @@ export default function BusinessProfilePage() {
     : "?";
 
   const coverDisplay = coverPreview || form.coverUrl;
+  const currentSection =
+    SECTION_OPTIONS.find((option) => option.key === activeSection) ||
+    SECTION_OPTIONS[0];
+  const CurrentSectionIcon = currentSection.icon;
 
   return (
     <AdminLayout title="Mi negocio">
       <div className="business-profile-page">
         <div className="admin-page-header">
           <h1 className="admin-page-title">Mi negocio</h1>
-        </div>
-        <form className="business-profile-form" onSubmit={handleSubmit}>
-          {/* Portada */}
-          <div className="business-profile-cover-wrap">
-            <label className="business-profile-cover-label">
-              Foto de portada
-            </label>
-            <button
-              type="button"
-              className="business-profile-cover-btn"
-              onClick={() => coverInputRef.current?.click()}
-              disabled={uploadingCover}
-              aria-label="Cambiar portada"
-            >
+          {canManage && (
+            <div className="business-profile-header-actions">
               <div
-                className={`business-profile-cover ${uploadingCover ? "business-profile-cover--uploading" : ""}`}
+                className="business-profile-header-selector"
+                ref={selectorRef}
               >
-                {coverDisplay ? (
-                  <img
-                    src={coverDisplay}
-                    alt=""
-                    className="business-profile-cover__img"
-                  />
-                ) : (
-                  <span className="business-profile-cover__placeholder">
-                    <ImageIcon size={32} />
+                <button
+                  type="button"
+                  className="selector-toggle"
+                  aria-haspopup="true"
+                  aria-expanded={selectorOpen}
+                  onClick={() => setSelectorOpen((s) => !s)}
+                >
+                  <CurrentSectionIcon size={16} />
+                  <span className="selector-current">
+                    {currentSection.label}
                   </span>
+                  <ChevronDown size={14} />
+                </button>
+
+                {selectorOpen && (
+                  <ul className="selector-list" role="menu">
+                    {SECTION_OPTIONS.map((option) => {
+                      const OptionIcon = option.icon;
+                      const isActive = option.key === activeSection;
+                      return (
+                        <li role="menuitem" key={option.key}>
+                          <button
+                            className={isActive ? "selector-item--active" : ""}
+                            onClick={() => handleSelect(option.key)}
+                          >
+                            <OptionIcon size={14} /> <span>{option.label}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
-              {uploadingCover && (
-                <span className="business-profile-cover__overlay">
-                  Subiendo...
-                </span>
-              )}
-            </button>
-            <input
-              ref={coverInputRef}
-              type="file"
-              accept="image/*"
-              className="business-profile-file-input"
-              onChange={handleCoverChange}
-              aria-hidden="true"
-            />
-            {form.coverUrl && (
+            </div>
+          )}
+        </div>
+        {activeSection === "general" ? (
+          <form className="business-profile-form" onSubmit={handleSubmit}>
+            {/* Portada */}
+            <div className="business-profile-cover-wrap">
+              <label className="business-profile-cover-label">
+                Foto de portada
+              </label>
               <button
                 type="button"
-                className="business-profile-cover-remove"
-                onClick={handleRemoveCover}
+                className="business-profile-cover-btn"
+                onClick={() => coverInputRef.current?.click()}
                 disabled={uploadingCover}
-                aria-label="Quitar portada"
-              >
-                Quitar portada
-              </button>
-            )}
-          </div>
-
-          {error && <p className="business-profile-error">{error}</p>}
-
-          {/* Logo */}
-          <div className="business-profile-logo-wrap">
-            <div className="logobtn">
-              <button
-                type="button"
-                className="business-profile-logo-btn"
-                onClick={() => logoInputRef.current?.click()}
-                disabled={uploadingLogo}
-                aria-label="Cambiar logo"
+                aria-label="Cambiar portada"
               >
                 <div
-                  className={`business-profile-logo ${uploadingLogo ? "business-profile-logo--uploading" : ""}`}
+                  className={`business-profile-cover ${uploadingCover ? "business-profile-cover--uploading" : ""}`}
                 >
-                  {logoDisplay ? (
+                  {coverDisplay ? (
                     <img
-                      src={logoDisplay}
+                      src={coverDisplay}
                       alt=""
-                      className="business-profile-logo__img"
+                      className="business-profile-cover__img"
                     />
                   ) : (
-                    <span className="business-profile-logo__initial">
-                      {logoInitial}
+                    <span className="business-profile-cover__placeholder">
+                      <ImageIcon size={32} />
                     </span>
                   )}
-                  <span
-                    className="business-profile-logo__camera"
-                    aria-hidden="true"
-                  >
-                    <Camera size={16} />
-                  </span>
                 </div>
-                {uploadingLogo && (
-                  <span className="business-profile-logo__overlay">
+                {uploadingCover && (
+                  <span className="business-profile-cover__overlay">
                     Subiendo...
                   </span>
                 )}
               </button>
               <input
-                ref={logoInputRef}
+                ref={coverInputRef}
                 type="file"
                 accept="image/*"
                 className="business-profile-file-input"
-                onChange={handleLogoChange}
+                onChange={handleCoverChange}
                 aria-hidden="true"
               />
-
-              {form.logoUrl && (
+              {form.coverUrl && (
                 <button
                   type="button"
-                  className="business-profile-logo-remove"
-                  onClick={async () => {
-                    if (!tenantId) return;
-                    if (!confirm("Quitar el logo?")) return;
-                    setUploadingLogo(true);
-                    try {
-                      await updateDoc(doc(db, "tenants", tenantId), {
-                        logoUrl: null,
-                      });
-                      setForm((f) => ({ ...f, logoUrl: null }));
-                    } catch (err) {
-                      console.error(err);
-                      setError("No se pudo quitar el logo.");
-                    } finally {
-                      setUploadingLogo(false);
-                    }
-                  }}
-                  aria-label="Quitar logo"
+                  className="business-profile-cover-remove"
+                  onClick={handleRemoveCover}
+                  disabled={uploadingCover}
+                  aria-label="Quitar portada"
                 >
-                  Quitar logo
+                  Quitar portada
                 </button>
               )}
             </div>
 
-            <div className="nombreIg">
-              <div className="form-field">
-                <label htmlFor="business-name">Nombre del negocio *</label>
-                <input
-                  id="business-name"
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => setField("name", e.target.value)}
-                  placeholder="Nombre del negocio"
-                  required
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor="business-phone">Teléfono</label>
-                <input
-                  id="business-phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => setField("phone", e.target.value)}
-                  placeholder="+56 9 XXXX XXXX"
-                />
-              </div>
+            {error && <p className="business-profile-error">{error}</p>}
 
-              <div className="form-field">
-                <label htmlFor="business-instagram">Instagram</label>
-                <input
-                  id="business-instagram"
-                  type="text"
-                  value={form.instagramUrl}
-                  onChange={(e) => setField("instagramUrl", e.target.value)}
-                  placeholder="@tulocal"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="business-desc">
-              Descripción{" "}
-              <span className="business-profile-char-count">
-                {form.description.length}/{DESC_MAX}
-              </span>
-            </label>
-            <textarea
-              id="business-desc"
-              value={form.description}
-              onChange={(e) =>
-                setField("description", e.target.value.slice(0, DESC_MAX))
-              }
-              placeholder="Breve descripción del negocio"
-              rows={3}
-            />
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="business-address">Dirección</label>
-            <input
-              id="business-address"
-              type="text"
-              value={form.address}
-              onChange={(e) => setField("address", e.target.value)}
-              placeholder="Dirección"
-            />
-          </div>
-
-          <section className="business-profile-appearance">
-            <h3 className="business-profile-appearance__title">Apariencia</h3>
-            <p className="business-profile-appearance__subtitle">
-              Elige el estilo visual que verán tus clientes al reservar.
-            </p>
-
-            {/* Selector de modo */}
-            <div className="theme-mode-toggle">
-              <button
-                type="button"
-                className={
-                  "theme-mode-option" +
-                  (theme.mode === "light" ? " theme-mode-option--active" : "")
-                }
-                onClick={() => handleModeChange("light")}
-              >
-                <span className="theme-mode-option__icon">
-                  <Sun size={16} />
-                </span>
-                <span className="theme-mode-option__text">
-                  <span className="theme-mode-option__label">Claro</span>
-                  <span className="theme-mode-option__desc">
-                    Fondo crema, ideal para la mayoría de negocios.
-                  </span>
-                </span>
-                {theme.mode === "light" && (
-                  <span className="theme-mode-option__check">✓</span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                className={
-                  "theme-mode-option" +
-                  (theme.mode === "dark" ? " theme-mode-option--active" : "")
-                }
-                onClick={() => handleModeChange("dark")}
-              >
-                <span className="theme-mode-option__icon">
-                  <Moon size={16} />
-                </span>
-                <span className="theme-mode-option__text">
-                  <span className="theme-mode-option__label">Oscuro</span>
-                  <span className="theme-mode-option__desc">
-                    Fondo oscuro elegante, ideal para barberías modernas.
-                  </span>
-                </span>
-                {theme.mode === "dark" && (
-                  <span className="theme-mode-option__check">✓</span>
-                )}
-              </button>
-            </div>
-
-            {/* Colores recomendados */}
-            <div className="theme-recommended">
-              <p className="theme-recommended__title">
-                {theme.mode === "light"
-                  ? "IDEALES PARA TEMA CLARO"
-                  : "IDEALES PARA TEMA OSCURO"}
-              </p>
-              <div className="theme-recommended__swatches">
-                {recommendedList.map((color) => {
-                  const isActive = color.toLowerCase() === accentLower;
-                  return (
-                    <button
-                      key={color}
-                      type="button"
-                      className={
-                        "theme-color-swatch" +
-                        (isActive ? " theme-color-swatch--active" : "")
-                      }
-                      style={{ backgroundColor: color }}
-                      onClick={() => handleSelectRecommended(color)}
-                      aria-label={`Usar color ${color}`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Color personalizado */}
-            <div className="theme-custom">
-              <div className="theme-custom__header">
-                <span className="theme-custom__title">
-                  🎨 Color personalizado
-                </span>
-                <span
-                  className={
-                    "theme-custom__badge" +
-                    (customActive
-                      ? " theme-custom__badge--active"
-                      : " theme-custom__badge--inactive")
-                  }
-                >
-                  {customActive ? "ACTIVO" : "INACTIVO"}
-                </span>
-              </div>
-              <p className="theme-custom__warning">
-                ⚠️ Una mala elección de color puede dificultar la lectura.
-                Asegúrate de que el color tenga suficiente contraste.
-              </p>
-              <div className="theme-custom__controls">
-                <input
-                  type="color"
-                  className="theme-custom__color-input"
-                  value={normalizeHex(customAccent || theme.accent)}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setCustomAccent(value);
-                  }}
-                />
-                <input
-                  type="text"
-                  className="theme-custom__hex-input"
-                  value={customAccent}
-                  onChange={(e) => setCustomAccent(e.target.value)}
-                  placeholder="#c17b5c"
-                />
+            {/* Logo */}
+            <div className="business-profile-logo-wrap">
+              <div className="logobtn">
                 <button
                   type="button"
-                  className="theme-custom__apply-btn"
-                  onClick={() =>
-                    setThemeField(
-                      "accent",
-                      normalizeHex(customAccent || theme.accent),
-                    )
-                  }
+                  className="business-profile-logo-btn"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={uploadingLogo}
+                  aria-label="Cambiar logo"
                 >
-                  Usar este color
+                  <div
+                    className={`business-profile-logo ${uploadingLogo ? "business-profile-logo--uploading" : ""}`}
+                  >
+                    {logoDisplay ? (
+                      <img
+                        src={logoDisplay}
+                        alt=""
+                        className="business-profile-logo__img"
+                      />
+                    ) : (
+                      <span className="business-profile-logo__initial">
+                        {logoInitial}
+                      </span>
+                    )}
+                    <span
+                      className="business-profile-logo__camera"
+                      aria-hidden="true"
+                    >
+                      <Camera size={16} />
+                    </span>
+                  </div>
+                  {uploadingLogo && (
+                    <span className="business-profile-logo__overlay">
+                      Subiendo...
+                    </span>
+                  )}
                 </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="business-profile-file-input"
+                  onChange={handleLogoChange}
+                  aria-hidden="true"
+                />
+
+                {form.logoUrl && (
+                  <button
+                    type="button"
+                    className="business-profile-logo-remove"
+                    onClick={async () => {
+                      if (!tenantId) return;
+                      if (!confirm("Quitar el logo?")) return;
+                      setUploadingLogo(true);
+                      try {
+                        await updateDoc(doc(db, "tenants", tenantId), {
+                          logoUrl: null,
+                        });
+                        setForm((f) => ({ ...f, logoUrl: null }));
+                      } catch (err) {
+                        console.error(err);
+                        setError("No se pudo quitar el logo.");
+                      } finally {
+                        setUploadingLogo(false);
+                      }
+                    }}
+                    aria-label="Quitar logo"
+                  >
+                    Quitar logo
+                  </button>
+                )}
+              </div>
+
+              <div className="nombreIg">
+                <div className="form-field">
+                  <label htmlFor="business-name">Nombre del negocio *</label>
+                  <input
+                    id="business-name"
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setField("name", e.target.value)}
+                    placeholder="Nombre del negocio"
+                    required
+                  />
+                </div>
+                <div className="form-field">
+                  <label htmlFor="business-phone">Teléfono</label>
+                  <input
+                    id="business-phone"
+                    type="tel"
+                    value={form.phone}
+                    onChange={(e) => setField("phone", e.target.value)}
+                    placeholder="+56 9 XXXX XXXX"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="business-instagram">Instagram</label>
+                  <input
+                    id="business-instagram"
+                    type="text"
+                    value={form.instagramUrl}
+                    onChange={(e) => setField("instagramUrl", e.target.value)}
+                    placeholder="@tulocal"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Vista previa */}
-            <div className="theme-preview">
-              <p className="theme-preview__label">VISTA PREVIA</p>
-              <div
-                className="theme-preview__card"
-                style={{
-                  backgroundColor:
-                    theme.mode === "light" ? "#ffffff" : "#1f1f1f",
-                  color: theme.mode === "light" ? "#1a1a1a" : "#f0f0f0",
-                }}
-              >
-                <p
-                  className="theme-preview__name"
-                  style={{ color: theme.accent }}
+            <div className="form-field">
+              <label htmlFor="business-desc">
+                Descripción{" "}
+                <span className="business-profile-char-count">
+                  {form.description.length}/{DESC_MAX}
+                </span>
+              </label>
+              <textarea
+                id="business-desc"
+                value={form.description}
+                onChange={(e) =>
+                  setField("description", e.target.value.slice(0, DESC_MAX))
+                }
+                placeholder="Breve descripción del negocio"
+                rows={3}
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="business-address">Dirección</label>
+              <input
+                id="business-address"
+                type="text"
+                value={form.address}
+                onChange={(e) => setField("address", e.target.value)}
+                placeholder="Dirección"
+              />
+            </div>
+
+            {/* Sección Abono */}
+            <section className="business-profile-deposit">
+              <h3 className="business-profile-deposit__title">Abono</h3>
+              <p className="business-profile-deposit__subtitle">
+                Opcional. Si lo activas, los clientes deberán transferir un
+                abono y subir el comprobante para confirmar la reserva.
+              </p>
+
+              <div className="business-profile-deposit-toggle-wrap">
+                <span className="business-profile-deposit-toggle-label">
+                  Requerir abono para reservar
+                </span>
+                <button
+                  type="button"
+                  className={`business-profile-deposit-toggle ${deposit.enabled ? "business-profile-deposit-toggle--on" : ""}`}
+                  onClick={() => setDepositField("enabled", !deposit.enabled)}
+                  role="switch"
+                  aria-checked={deposit.enabled}
                 >
-                  {form.name || "Nombre del negocio"}
+                  <span className="business-profile-deposit-toggle__track">
+                    <span className="business-profile-deposit-toggle__thumb" />
+                  </span>
+                </button>
+              </div>
+
+              {deposit.enabled && (
+                <>
+                  <p className="business-profile-deposit-type-label">
+                    Tipo de abono
+                  </p>
+                  <div className="inherit-toggle business-profile-deposit-type">
+                    <button
+                      type="button"
+                      className={`inherit-btn ${deposit.type === "fixed" ? "inherit-btn--active" : ""}`}
+                      onClick={() => setDepositField("type", "fixed")}
+                    >
+                      Monto fijo
+                    </button>
+                    <button
+                      type="button"
+                      className={`inherit-btn ${deposit.type === "per_service" ? "inherit-btn--active" : ""}`}
+                      onClick={() => setDepositField("type", "per_service")}
+                    >
+                      Por servicio
+                    </button>
+                  </div>
+
+                  {deposit.type === "fixed" && (
+                    <div className="form-field">
+                      <label htmlFor="deposit-amount">
+                        Monto del abono (CLP)
+                      </label>
+                      <input
+                        id="deposit-amount"
+                        type="number"
+                        min={0}
+                        value={deposit.amount || ""}
+                        onChange={(e) =>
+                          setDepositField(
+                            "amount",
+                            e.target.value === "" ? 0 : Number(e.target.value),
+                          )
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                  )}
+
+                  {deposit.type === "per_service" && (
+                    <p className="business-profile-deposit-per-service-hint">
+                      Configura el abono de cada servicio en la sección
+                      Servicios.
+                    </p>
+                  )}
+
+                  <p className="business-profile-deposit-bank-label">
+                    Datos bancarios
+                  </p>
+                  <div className="business-profile-deposit-bank">
+                    <div className="form-field">
+                      <label htmlFor="deposit-bank">Banco</label>
+                      <input
+                        id="deposit-bank"
+                        type="text"
+                        value={deposit.bankInfo.bank}
+                        onChange={(e) =>
+                          setDepositField("bankInfo.bank", e.target.value)
+                        }
+                        placeholder="Banco Estado, Banco Chile, Mercado Pago..."
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="deposit-account-type">
+                        Tipo de cuenta
+                      </label>
+                      <select
+                        id="deposit-account-type"
+                        value={deposit.bankInfo.accountType}
+                        onChange={(e) =>
+                          setDepositField(
+                            "bankInfo.accountType",
+                            e.target.value,
+                          )
+                        }
+                      >
+                        <option value="">Selecciona</option>
+                        {ACCOUNT_TYPES.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="deposit-account-number">
+                        Número de cuenta
+                      </label>
+                      <input
+                        id="deposit-account-number"
+                        type="text"
+                        value={deposit.bankInfo.accountNumber}
+                        onChange={(e) =>
+                          setDepositField(
+                            "bankInfo.accountNumber",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="Número de cuenta"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="deposit-rut">RUT del titular</label>
+                      <input
+                        id="deposit-rut"
+                        type="text"
+                        value={deposit.bankInfo.rut}
+                        onChange={(e) =>
+                          setDepositField("bankInfo.rut", e.target.value)
+                        }
+                        placeholder="12.345.678-9"
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label htmlFor="deposit-holder">Nombre del titular</label>
+                      <input
+                        id="deposit-holder"
+                        type="text"
+                        value={deposit.bankInfo.holderName}
+                        onChange={(e) =>
+                          setDepositField("bankInfo.holderName", e.target.value)
+                        }
+                        placeholder="Nombre del titular"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+
+            <button
+              type="submit"
+              className="btn-primary business-profile-save-btn"
+              disabled={saving}
+            >
+              {saved ? (
+                <>
+                  <Check size={16} /> Guardado
+                </>
+              ) : saving ? (
+                "Guardando..."
+              ) : (
+                "Guardar cambios"
+              )}
+            </button>
+          </form>
+        ) : activeSection === "appearance" ? (
+          <form className="business-profile-form" onSubmit={handleSubmit}>
+            {error && <p className="business-profile-error">{error}</p>}
+
+            <section className="business-profile-appearance">
+              <p className="business-profile-appearance__subtitle">
+                Elige el estilo visual que verán tus clientes al reservar.
+              </p>
+
+              {/* Selector de modo */}
+              <div className="theme-mode-toggle">
+                <button
+                  type="button"
+                  className={
+                    "theme-mode-option" +
+                    (theme.mode === "light" ? " theme-mode-option--active" : "")
+                  }
+                  onClick={() => handleModeChange("light")}
+                >
+                  <span className="theme-mode-option__icon">
+                    <Sun size={16} />
+                  </span>
+                  <span className="theme-mode-option__text">
+                    <span className="theme-mode-option__label">Claro</span>
+                    <span className="theme-mode-option__desc">
+                      Fondo crema, ideal para la mayoría de negocios.
+                    </span>
+                  </span>
+                  {theme.mode === "light" && (
+                    <span className="theme-mode-option__check">✓</span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className={
+                    "theme-mode-option" +
+                    (theme.mode === "dark" ? " theme-mode-option--active" : "")
+                  }
+                  onClick={() => handleModeChange("dark")}
+                >
+                  <span className="theme-mode-option__icon">
+                    <Moon size={16} />
+                  </span>
+                  <span className="theme-mode-option__text">
+                    <span className="theme-mode-option__label">Oscuro</span>
+                    <span className="theme-mode-option__desc">
+                      Fondo oscuro elegante, ideal para barberías modernas.
+                    </span>
+                  </span>
+                  {theme.mode === "dark" && (
+                    <span className="theme-mode-option__check">✓</span>
+                  )}
+                </button>
+              </div>
+
+              {/* Colores recomendados */}
+              <div className="theme-recommended">
+                <p className="theme-recommended__title">
+                  {theme.mode === "light"
+                    ? "IDEALES PARA TEMA CLARO"
+                    : "IDEALES PARA TEMA OSCURO"}
                 </p>
-                <div className="theme-preview__row">
-                  <span>Servicio de ejemplo</span>
+                <div className="theme-recommended__swatches">
+                  {recommendedList.map((color) => {
+                    const isActive = color.toLowerCase() === accentLower;
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        className={
+                          "theme-color-swatch" +
+                          (isActive ? " theme-color-swatch--active" : "")
+                        }
+                        style={{ backgroundColor: color }}
+                        onClick={() => handleSelectRecommended(color)}
+                        aria-label={`Usar color ${color}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Color personalizado */}
+              <div className="theme-custom">
+                <div className="theme-custom__header">
+                  <span className="theme-custom__title">
+                    Color personalizado
+                  </span>
                   <span
-                    className="theme-preview__price"
+                    className={
+                      "theme-custom__badge" +
+                      (customActive
+                        ? " theme-custom__badge--active"
+                        : " theme-custom__badge--inactive")
+                    }
+                  >
+                    {customActive ? "ACTIVO" : "INACTIVO"}
+                  </span>
+                </div>
+                <p className="theme-custom__warning">
+                  Una mala elección de color puede dificultar la lectura.
+                  Asegúrate de que el color tenga suficiente contraste.
+                </p>
+                <div className="theme-custom__controls">
+                  <input
+                    type="color"
+                    className="theme-custom__color-input"
+                    value={normalizeHex(customAccent || theme.accent)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCustomAccent(value);
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className="theme-custom__hex-input"
+                    value={customAccent}
+                    onChange={(e) => setCustomAccent(e.target.value)}
+                    placeholder="#c17b5c"
+                  />
+                  <button
+                    type="button"
+                    className="theme-custom__apply-btn"
+                    onClick={() =>
+                      setThemeField(
+                        "accent",
+                        normalizeHex(customAccent || theme.accent),
+                      )
+                    }
+                  >
+                    Usar este color
+                  </button>
+                </div>
+              </div>
+
+              {/* Vista previa */}
+              <div className="theme-preview">
+                <p className="theme-preview__label">VISTA PREVIA</p>
+                <div
+                  className="theme-preview__card"
+                  style={{
+                    backgroundColor:
+                      theme.mode === "light" ? "#ffffff" : "#1f1f1f",
+                    color: theme.mode === "light" ? "#1a1a1a" : "#f0f0f0",
+                  }}
+                >
+                  <p
+                    className="theme-preview__name"
                     style={{ color: theme.accent }}
                   >
-                    $15.000
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="theme-preview__button"
-                  style={{
-                    backgroundColor: theme.accent,
-                    color: "#ffffff",
-                  }}
-                >
-                  Reservar ahora
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* Sección Abono */}
-          <section className="business-profile-deposit">
-            <h3 className="business-profile-deposit__title">Abono</h3>
-            <p className="business-profile-deposit__subtitle">
-              Opcional. Si lo activas, los clientes deberán transferir un abono
-              y subir el comprobante para confirmar la reserva.
-            </p>
-
-            <div className="business-profile-deposit-toggle-wrap">
-              <span className="business-profile-deposit-toggle-label">
-                Requerir abono para reservar
-              </span>
-              <button
-                type="button"
-                className={`business-profile-deposit-toggle ${deposit.enabled ? "business-profile-deposit-toggle--on" : ""}`}
-                onClick={() => setDepositField("enabled", !deposit.enabled)}
-                role="switch"
-                aria-checked={deposit.enabled}
-              >
-                <span className="business-profile-deposit-toggle__track">
-                  <span className="business-profile-deposit-toggle__thumb" />
-                </span>
-              </button>
-            </div>
-
-            {deposit.enabled && (
-              <>
-                <p className="business-profile-deposit-type-label">
-                  Tipo de abono
-                </p>
-                <div className="inherit-toggle business-profile-deposit-type">
-                  <button
-                    type="button"
-                    className={`inherit-btn ${deposit.type === "fixed" ? "inherit-btn--active" : ""}`}
-                    onClick={() => setDepositField("type", "fixed")}
-                  >
-                    Monto fijo
-                  </button>
-                  <button
-                    type="button"
-                    className={`inherit-btn ${deposit.type === "per_service" ? "inherit-btn--active" : ""}`}
-                    onClick={() => setDepositField("type", "per_service")}
-                  >
-                    Por servicio
-                  </button>
-                </div>
-
-                {deposit.type === "fixed" && (
-                  <div className="form-field">
-                    <label htmlFor="deposit-amount">
-                      Monto del abono (CLP)
-                    </label>
-                    <input
-                      id="deposit-amount"
-                      type="number"
-                      min={0}
-                      value={deposit.amount || ""}
-                      onChange={(e) =>
-                        setDepositField(
-                          "amount",
-                          e.target.value === "" ? 0 : Number(e.target.value),
-                        )
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-                )}
-
-                {deposit.type === "per_service" && (
-                  <p className="business-profile-deposit-per-service-hint">
-                    Configura el abono de cada servicio en la sección Servicios.
+                    {form.name || "Nombre del negocio"}
                   </p>
-                )}
-
-                <p className="business-profile-deposit-bank-label">
-                  Datos bancarios
-                </p>
-                <div className="business-profile-deposit-bank">
-                  <div className="form-field">
-                    <label htmlFor="deposit-bank">Banco</label>
-                    <input
-                      id="deposit-bank"
-                      type="text"
-                      value={deposit.bankInfo.bank}
-                      onChange={(e) =>
-                        setDepositField("bankInfo.bank", e.target.value)
-                      }
-                      placeholder="Banco Estado, Banco Chile, Mercado Pago..."
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label htmlFor="deposit-account-type">Tipo de cuenta</label>
-                    <select
-                      id="deposit-account-type"
-                      value={deposit.bankInfo.accountType}
-                      onChange={(e) =>
-                        setDepositField("bankInfo.accountType", e.target.value)
-                      }
+                  <div className="theme-preview__row">
+                    <span>Servicio de ejemplo</span>
+                    <span
+                      className="theme-preview__price"
+                      style={{ color: theme.accent }}
                     >
-                      <option value="">Selecciona</option>
-                      {ACCOUNT_TYPES.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
+                      $15.000
+                    </span>
                   </div>
-                  <div className="form-field">
-                    <label htmlFor="deposit-account-number">
-                      Número de cuenta
-                    </label>
-                    <input
-                      id="deposit-account-number"
-                      type="text"
-                      value={deposit.bankInfo.accountNumber}
-                      onChange={(e) =>
-                        setDepositField(
-                          "bankInfo.accountNumber",
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Número de cuenta"
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label htmlFor="deposit-rut">RUT del titular</label>
-                    <input
-                      id="deposit-rut"
-                      type="text"
-                      value={deposit.bankInfo.rut}
-                      onChange={(e) =>
-                        setDepositField("bankInfo.rut", e.target.value)
-                      }
-                      placeholder="12.345.678-9"
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label htmlFor="deposit-holder">Nombre del titular</label>
-                    <input
-                      id="deposit-holder"
-                      type="text"
-                      value={deposit.bankInfo.holderName}
-                      onChange={(e) =>
-                        setDepositField("bankInfo.holderName", e.target.value)
-                      }
-                      placeholder="Nombre del titular"
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    className="theme-preview__button"
+                    style={{
+                      backgroundColor: theme.accent,
+                      color: "#ffffff",
+                    }}
+                  >
+                    Reservar ahora
+                  </button>
                 </div>
-              </>
-            )}
-          </section>
+              </div>
+            </section>
 
-          <button
-            type="submit"
-            className="btn-primary business-profile-save-btn"
-            disabled={saving}
-          >
-            {saved ? (
-              <>
-                <Check size={16} /> Guardado
-              </>
-            ) : saving ? (
-              "Guardando..."
-            ) : (
-              "Guardar cambios"
-            )}
-          </button>
-        </form>
+            <button
+              type="submit"
+              className="btn-primary business-profile-save-btn"
+              disabled={saving}
+            >
+              {saved ? (
+                <>
+                  <Check size={16} /> Guardado
+                </>
+              ) : saving ? (
+                "Guardando..."
+              ) : (
+                "Guardar cambios"
+              )}
+            </button>
+          </form>
+        ) : (
+          <div className="business-profile-embedded-view">
+            {activeSection === "services" && <ServicesPage embedded />}
+            {activeSection === "schedule" && <SchedulePage embedded />}
+            {activeSection === "reviews" && <ReviewsPage embedded />}
+          </div>
+        )}
       </div>
     </AdminLayout>
   );

@@ -11,6 +11,7 @@ import ProfessionalPage from "./pages/public/ProfessionalPage.jsx";
 import BookingPage from "./pages/public/BookingPage.jsx";
 // ReviewPage removed; reviews now handled inside BookingStatusPage
 import BookingStatusPage from "./pages/public/BookingStatusPage.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 import AuthGuard from "./components/ui/AuthGuard.jsx";
 import LoginPage from "./pages/admin/LoginPage.jsx";
 import BookingsPage from "./pages/admin/BookingsPage.jsx";
@@ -137,6 +138,7 @@ export default function App() {
           }
         />
 
+        <Route path="/" element={<LandingPage />} />
         <Route path="/:slug/pro/:profSlug" element={<ProfessionalPage />} />
         {/* Ruta de reseñas eliminada: ahora las reseñas se gestionan en BookingStatusPage */}
         <Route

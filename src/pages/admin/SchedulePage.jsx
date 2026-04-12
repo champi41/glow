@@ -32,8 +32,18 @@ for (let h = 7; h <= 23; h++) {
 }
 
 const DEFAULT_BREAK = { hasBreak: false, start: "13:00", end: "14:00" };
-const DEFAULT_DAY = { isOpen: false, open: "09:00", close: "19:00", break: DEFAULT_BREAK };
-const DEFAULT_AVAIL = { isWorking: false, start: "09:00", end: "19:00", break: DEFAULT_BREAK };
+const DEFAULT_DAY = {
+  isOpen: false,
+  open: "09:00",
+  close: "19:00",
+  break: DEFAULT_BREAK,
+};
+const DEFAULT_AVAIL = {
+  isWorking: false,
+  start: "09:00",
+  end: "19:00",
+  break: DEFAULT_BREAK,
+};
 
 // ─── Fila de un día (negocio o profesional) ───────────────────
 function DayRow({ day, value, onChange, isProf = false }) {
@@ -43,9 +53,7 @@ function DayRow({ day, value, onChange, isProf = false }) {
 
   const isOn = value?.[isOpenKey] ?? false;
   const breakVal =
-    value?.break != null
-      ? { ...DEFAULT_BREAK, ...value.break }
-      : DEFAULT_BREAK;
+    value?.break != null ? { ...DEFAULT_BREAK, ...value.break } : DEFAULT_BREAK;
 
   function update(partial) {
     onChange({ ...value, ...partial, break: partial.break ?? breakVal });
@@ -343,7 +351,7 @@ function ProfSchedule({ prof, tenantId, queryClient }) {
 }
 
 // ─── Página principal ─────────────────────────────────────────
-export default function SchedulePage() {
+export default function SchedulePage({ embedded = false }) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const { data: tenant, isLoading } = useTenantById(tenantId);
@@ -355,64 +363,64 @@ export default function SchedulePage() {
   );
 
   if (!tenant && isLoading) {
-    return (
-      <AdminLayout title="Horario">
-        <div className="schedule-page">
-          <div className="admin-page-header">
-            <h1 className="admin-page-title">Horario</h1>
-          </div>
-          <div className="schedule-loading">Cargando...</div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  if (!tenant && !isLoading) {
-    return (
-      <AdminLayout title="Horario">
-        <div className="schedule-page">
-          <div className="admin-page-header">
-            <h1 className="admin-page-title">Horario</h1>
-          </div>
-          <div className="schedule-loading">No se encontró el negocio.</div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
-  return (
-    <AdminLayout title="Horario">
+    const loadingContent = (
       <div className="schedule-page">
         <div className="admin-page-header">
           <h1 className="admin-page-title">Horario</h1>
         </div>
-        {/* Horario del negocio */}
-        <BusinessSchedule
-          tenant={tenant}
-          tenantId={tenantId}
-          queryClient={queryClient}
-        />
-
-        {/* Horarios por profesional */}
-        {activeProfs.length > 0 && (
-          <div className="schedule-section">
-            <p className="schedule-section__title">Horario por profesional</p>
-            <p className="schedule-section__subtitle">
-              Configura un horario distinto al del negocio para cada uno.
-            </p>
-            <div className="prof-schedules-list">
-              {activeProfs.map((prof) => (
-                <ProfSchedule
-                  key={prof.id}
-                  prof={prof}
-                  tenantId={tenantId}
-                  queryClient={queryClient}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="schedule-loading">Cargando...</div>
       </div>
-    </AdminLayout>
+    );
+    if (embedded) return loadingContent;
+    return <AdminLayout title="Horario">{loadingContent}</AdminLayout>;
+  }
+
+  if (!tenant && !isLoading) {
+    const emptyContent = (
+      <div className="schedule-page">
+        <div className="admin-page-header">
+          <h1 className="admin-page-title">Horario</h1>
+        </div>
+        <div className="schedule-loading">No se encontró el negocio.</div>
+      </div>
+    );
+    if (embedded) return emptyContent;
+    return <AdminLayout title="Horario">{emptyContent}</AdminLayout>;
+  }
+
+  const content = (
+    <div className="schedule-page">
+
+      {/* Horario del negocio */}
+      <BusinessSchedule
+        tenant={tenant}
+        tenantId={tenantId}
+        queryClient={queryClient}
+      />
+
+      {/* Horarios por profesional */}
+      {activeProfs.length > 0 && (
+        <div className="schedule-section">
+          <p className="schedule-section__title">Horario por profesional</p>
+          <p className="schedule-section__subtitle">
+            Configura un horario distinto al del negocio para cada uno.
+          </p>
+          <div className="prof-schedules-list">
+            {activeProfs.map((prof) => (
+              <ProfSchedule
+                key={prof.id}
+                prof={prof}
+                tenantId={tenantId}
+                queryClient={queryClient}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
+
+  if (embedded) return content;
+
+  return <AdminLayout title="Horario">{content}</AdminLayout>;
 }

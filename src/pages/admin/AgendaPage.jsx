@@ -58,6 +58,14 @@ const STATUS_BG = {
   cancelled: "var(--color-surface-2)",
 };
 
+function isCancelledStatus(status) {
+  return status === "cancelled" || status === "canceled";
+}
+
+function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+  return aStart < bEnd && aEnd > bStart;
+}
+
 // ─── Bloque de reserva en la agenda ──────────────────────────
 function AgendaBookingBlock({ item, booking, topPx, heightPx, onClick }) {
   return (
@@ -147,7 +155,29 @@ function ProfColumn({
       }
     }
 
-    return Array.from(byBooking.values());
+    const aggregated = Array.from(byBooking.values());
+
+    // Regla anti-solapamiento por estado:
+    // si un bloque cancelado se cruza con uno activo en el mismo profesional,
+    // se oculta el cancelado para priorizar la reserva vigente.
+    const active = aggregated.filter(
+      ({ booking }) => !isCancelledStatus(booking.status),
+    );
+    const cancelled = aggregated.filter(({ booking }) =>
+      isCancelledStatus(booking.status),
+    );
+
+    const visibleCancelled = cancelled.filter(({ item }) => {
+      const cStart = timeToMin(item.startTime);
+      const cEnd = timeToMin(item.endTime);
+      return !active.some(({ item: activeItem }) => {
+        const aStart = timeToMin(activeItem.startTime);
+        const aEnd = timeToMin(activeItem.endTime);
+        return rangesOverlap(cStart, cEnd, aStart, aEnd);
+      });
+    });
+
+    return [...active, ...visibleCancelled];
   }, [bookings, prof.id]);
 
   // Bloqueos de este profesional

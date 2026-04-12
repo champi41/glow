@@ -1,15 +1,7 @@
 // src/components/admin/AdminLayout.jsx
 
 import { NavLink } from "react-router-dom";
-import {
-  CalendarDays,
-  ClipboardList,
-  Scissors,
-  Clock,
-  UserCircle,
-  Store,
-  Star,
-} from "lucide-react";
+import { CalendarDays, ClipboardList, UserCircle, Store } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenantById } from "../../hooks/useTenant.js";
 import { useEffect } from "react";
@@ -37,24 +29,6 @@ const NAV_ITEMS = [
     manageOnly: true,
   },
   {
-    to: "/admin/servicios",
-    icon: Scissors,
-    label: "Servicios",
-    manageOnly: true,
-  },
-  {
-    to: "/admin/horario",
-    icon: Clock,
-    label: "Horario",
-    manageOnly: true,
-  },
-  {
-    to: "/admin/resenas",
-    icon: Star,
-    label: "Reseñas",
-    manageOnly: true,
-  },
-  {
     to: "/admin/perfil",
     icon: UserCircle,
     label: "Perfil",
@@ -63,8 +37,7 @@ const NAV_ITEMS = [
 ];
 
 export default function AdminLayout({ children, title }) {
-  const { canManage } = useAuth();
-  const { tenantId } = useAuth();
+  const { canManage, tenantId } = useAuth();
   const { data: tenant } = useTenantById(tenantId);
 
   // Ajustar título y favicon del dashboard admin según tenant
@@ -96,6 +69,7 @@ export default function AdminLayout({ children, title }) {
         appleLink.setAttribute("href", previousAppleHref);
     };
   }, [tenant]);
+
   const { canInstall, promptInstall, isInstalled, isIOS } = usePWAInstall();
   const showIOSHint = isIOS && !isInstalled;
 
@@ -115,13 +89,15 @@ export default function AdminLayout({ children, title }) {
           <NavLink
             key={item.to}
             to={item.to}
+            aria-label={item.label}
+            title={item.label}
             className={({ isActive }) =>
               ["admin-nav-item", isActive ? "admin-nav-item--active" : ""].join(
                 " ",
               )
             }
           >
-            <item.icon size={22} strokeWidth={1.8} />
+            <item.icon size={25} strokeWidth={1.8} />
             <span>{item.label}</span>
           </NavLink>
         ))}
