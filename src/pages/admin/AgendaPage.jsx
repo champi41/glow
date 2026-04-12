@@ -85,7 +85,11 @@ function AgendaBlockBlock({ block, topPx, heightPx, onClick }) {
     <div
       className="agenda-block agenda-block--block"
       style={{ top: topPx, height: Math.max(heightPx, 28) }}
-      title={block.reason ? "Toca para quitar el bloqueo" : "Bloqueado. Toca para quitar"}
+      title={
+        block.reason
+          ? "Toca para quitar el bloqueo"
+          : "Bloqueado. Toca para quitar"
+      }
       onClick={onClick}
       role="button"
     >
@@ -268,19 +272,19 @@ function DayView({
           .filter((p) => p.isActive)
           .map((prof) => (
             <ProfColumn
-            key={prof.id}
-            prof={prof}
-            bookings={bookings}
-            blocks={blocks}
-            hours={hours}
-            openMin={openMin}
-            pxPerMin={pxPerMin}
-            onBookingClick={onBookingClick}
-            onToggleBlock={(timeStr) =>
-              onToggleBlock(prof.id, dateStr, timeStr, blocks)
-            }
-          />
-        ))}
+              key={prof.id}
+              prof={prof}
+              bookings={bookings}
+              blocks={blocks}
+              hours={hours}
+              openMin={openMin}
+              pxPerMin={pxPerMin}
+              onBookingClick={onBookingClick}
+              onToggleBlock={(timeStr) =>
+                onToggleBlock(prof.id, dateStr, timeStr, blocks)
+              }
+            />
+          ))}
       </div>
     </div>
   );
@@ -458,48 +462,50 @@ export default function AgendaPage() {
   return (
     <AdminLayout title="Agenda">
       <div className="agenda-page">
-        <div className="admin-page-header">
-          <h1 className="admin-page-title">Agenda</h1>
-          {/* Navegación de semana */}
-          <div className="week-nav">
-            <button className="week-nav__btn" onClick={prevWeek}>
-              <ChevronLeft size={18} />
-            </button>
-            <span className="week-nav__label">
-              {format(weekStart, "d MMM", { locale: es })}
-              {" – "}
-              {format(addDays(weekStart, 6), "d MMM yyyy", { locale: es })}
-            </span>
-            <button className="week-nav__btn" onClick={nextWeek}>
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Selector de día */}
-        <div className="week-days">
-          {weekDays.map((day) => {
-            const dateStr = format(day, "yyyy-MM-dd");
-            const isToday = dateStr === format(today, "yyyy-MM-dd");
-            const selected = dateStr === selectedDay;
-
-            return (
-              <button
-                key={dateStr}
-                className={[
-                  "week-day-chip",
-                  selected ? "week-day-chip--selected" : "",
-                  isToday ? "week-day-chip--today" : "",
-                ].join(" ")}
-                onClick={() => setSelectedDay(dateStr)}
-              >
-                <span className="week-day-chip__name">
-                  {format(day, "EEE", { locale: es })}
-                </span>
-                <span className="week-day-chip__num">{format(day, "d")}</span>
+        <div className="agendaHeader">
+          <div className="admin-page-header">
+            <h1 className="admin-page-title">Agenda</h1>
+            {/* Navegación de semana */}
+            <div className="week-nav">
+              <button className="week-nav__btn" onClick={prevWeek}>
+                <ChevronLeft size={18} />
               </button>
-            );
-          })}
+              <span className="week-nav__label">
+                {format(weekStart, "d MMM", { locale: es })}
+                {" – "}
+                {format(addDays(weekStart, 6), "d MMM yyyy", { locale: es })}
+              </span>
+              <button className="week-nav__btn" onClick={nextWeek}>
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Selector de día */}
+          <div className="week-days">
+            {weekDays.map((day) => {
+              const dateStr = format(day, "yyyy-MM-dd");
+              const isToday = dateStr === format(today, "yyyy-MM-dd");
+              const selected = dateStr === selectedDay;
+
+              return (
+                <button
+                  key={dateStr}
+                  className={[
+                    "week-day-chip",
+                    selected ? "week-day-chip--selected" : "",
+                    isToday ? "week-day-chip--today" : "",
+                  ].join(" ")}
+                  onClick={() => setSelectedDay(dateStr)}
+                >
+                  <span className="week-day-chip__name">
+                    {format(day, "EEE", { locale: es })}
+                  </span>
+                  <span className="week-day-chip__num">{format(day, "d")}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Vista del día seleccionado */}

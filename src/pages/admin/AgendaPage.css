@@ -1,9 +1,25 @@
 /* src/pages/admin/AgendaPage.css */
 
 .agenda-page {
+  padding-top: 120px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 15px;
+  /* altura por hora usada para calcular min-height dinámico */
+  --hour-height: 56px;
+}
+
+.agendaHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 15px;
+  background-color: var(--color-bg);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
 }
 
 /* ── Navegación de semana ── */
@@ -24,7 +40,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .week-nav__btn:hover {
@@ -54,19 +72,6 @@
   padding: 8px 4px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-bg-elevated);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-  font-family: var(--font-body);
-}
-
-.week-day-chip:hover {
-  border-color: var(--color-accent);
-}
-
-.week-day-chip--selected {
-  border-color: var(--color-accent);
-  background: var(--color-accent-bg);
 }
 
 .week-day-chip--today .week-day-chip__num {
@@ -75,7 +80,7 @@
 }
 
 .week-day-chip__name {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -101,11 +106,11 @@
 /* ── Vista del día ── */
 .agenda-scroll-wrap {
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: visible; /* allow page to scroll vertically instead of inner scroll */
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
-  height: calc(100svh - 13.5rem);
+  max-height: auto; /* expand to content height so page scrolls */
   padding-top: 10px;
 }
 
@@ -144,7 +149,8 @@
 
 .agenda-time-axis__body {
   position: relative;
-  flex: 1;
+  /* let the axis grow so the page becomes the primary scroller */
+  min-height: calc(var(--visible-hours, 12) * var(--hour-height, 56px));
 }
 
 .agenda-time-label {
@@ -181,8 +187,8 @@
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   position: sticky;
-  top: 0;
-  z-index: 2;
+  top: var(--agenda-header-height); /* stay below fixed header */
+  z-index: 60;
 }
 
 .agenda-col__avatar {
@@ -212,7 +218,8 @@
 
 .agenda-col__body {
   position: relative;
-  flex: 1;
+  /* grow with content so the page scrolls vertically */
+  min-height: calc(var(--visible-hours, 12) * var(--hour-height, 56px));
 }
 
 /* ── Líneas de hora ── */
@@ -296,23 +303,34 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-card {
   width: 100%;
   max-width: 420px;
   background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md)
+    var(--radius-md);
   border: 1px solid var(--color-border);
   overflow: hidden;
   animation: slideUp 0.2s ease;
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .modal-card__header {
@@ -406,13 +424,6 @@
   color: var(--color-success);
   text-decoration: none;
   padding: 8px 0;
-}
-
-.modal-card__actions {
-  display: flex;
-  gap: 8px;
-  padding: 12px 20px 20px;
-  border-top: 1px solid var(--color-separator);
 }
 
 .modal-card__actions .action-btn {

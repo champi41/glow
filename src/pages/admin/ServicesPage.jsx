@@ -456,7 +456,7 @@ export default function ServicesPage() {
   return (
     <AdminLayout title="Servicios">
       <div className="services-page">
-        <div className="admin-page-header">
+        <div className="serviciosHeader">
           <h1 className="admin-page-title">Servicios</h1>
           {/* Botón crear */}
           <button
