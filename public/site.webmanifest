@@ -28,6 +28,6 @@
   "theme_color": "#2e1300",
   "background_color": "#2e1300",
   "display": "standalone",
-  "start_url": "/",
-  "scope": "/"
+  "start_url": "/admin/reservas",
+  "scope": "/admin/"
 }
