@@ -11,6 +11,8 @@ import {
   Star,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useTenantById } from "../../hooks/useTenant.js";
+import { useEffect } from "react";
 import { usePWAInstall } from "../../hooks/usePWAInstall.js";
 import InstallBanner from "../ui/InstallBanner.jsx";
 import "./AdminLayout.css";
@@ -62,6 +64,38 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children, title }) {
   const { canManage } = useAuth();
+  const { tenantId } = useAuth();
+  const { data: tenant } = useTenantById(tenantId);
+
+  // Ajustar título y favicon del dashboard admin según tenant
+  useEffect(() => {
+    if (!tenant) return;
+
+    const previousTitle = document.title;
+    const iconLink = document.querySelector('link[rel="icon"]');
+    const appleLink = document.querySelector('link[rel="apple-touch-icon"]');
+    const previousIconHref = iconLink?.getAttribute("href");
+    const previousAppleHref = appleLink?.getAttribute("href");
+
+    const chosenTitle = tenant.name || previousTitle;
+    const chosenIcon = tenant.logoUrl || previousIconHref || "/favicon.ico";
+
+    try {
+      if (chosenTitle) document.title = chosenTitle;
+      if (iconLink && chosenIcon) iconLink.setAttribute("href", chosenIcon);
+      if (appleLink && chosenIcon) appleLink.setAttribute("href", chosenIcon);
+    } catch (e) {
+      // ignore
+    }
+
+    return () => {
+      if (previousTitle) document.title = previousTitle;
+      if (iconLink && previousIconHref)
+        iconLink.setAttribute("href", previousIconHref);
+      if (appleLink && previousAppleHref)
+        appleLink.setAttribute("href", previousAppleHref);
+    };
+  }, [tenant]);
   const { canInstall, promptInstall, isInstalled, isIOS } = usePWAInstall();
   const showIOSHint = isIOS && !isInstalled;
 
