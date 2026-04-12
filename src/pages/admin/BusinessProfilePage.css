@@ -29,9 +29,7 @@
 .logobtn {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
+  gap: 10px;
 }
 .business-profile-logo-btn {
   position: relative;
