@@ -30,6 +30,44 @@ import StepConfirmation from "./steps/StepConfirmation.jsx";
 
 import "./BookingPage.css";
 
+const CLIENT_CACHE_KEY = "booking-client-data-v1";
+
+function readCachedClientData() {
+  if (typeof window === "undefined") {
+    return { clientName: "", clientPhone: "", clientEmail: "" };
+  }
+
+  try {
+    const raw = window.localStorage.getItem(CLIENT_CACHE_KEY);
+    if (!raw) return { clientName: "", clientPhone: "", clientEmail: "" };
+
+    const parsed = JSON.parse(raw);
+    return {
+      clientName: parsed?.clientName || "",
+      clientPhone: parsed?.clientPhone || "",
+      clientEmail: parsed?.clientEmail || "",
+    };
+  } catch {
+    return { clientName: "", clientPhone: "", clientEmail: "" };
+  }
+}
+
+function persistClientData(data) {
+  if (typeof window === "undefined") return;
+
+  const payload = {
+    clientName: data?.clientName?.trim?.() || "",
+    clientPhone: data?.clientPhone?.trim?.() || "",
+    clientEmail: data?.clientEmail?.trim?.() || "",
+  };
+
+  try {
+    window.localStorage.setItem(CLIENT_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignorar errores de almacenamiento local.
+  }
+}
+
 // ─── Constantes de pasos ─────────────────────────────────────
 const STEP = {
   SERVICES: 1,
@@ -81,11 +119,7 @@ export default function BookingPage() {
   const [assignments, setAssignments] = useState({}); // { serviceId: profId | "any" }
   const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD"
   const [selectedSlotData, setSelectedSlotData] = useState(null); // objeto completo de slots.js
-  const [clientData, setClientData] = useState({
-    clientName: "",
-    clientPhone: "",
-    clientEmail: "",
-  });
+  const [clientData, setClientData] = useState(() => readCachedClientData());
   const [confirmedBooking, setConfirmedBooking] = useState(null); // booking guardado
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -334,6 +368,15 @@ export default function BookingPage() {
   }
 
   async function handleConfirm(formData) {
+    const normalizedClientData = {
+      clientName: formData.clientName?.trim?.() || "",
+      clientPhone: formData.clientPhone?.trim?.() || "",
+      clientEmail: formData.clientEmail?.trim?.() || "",
+    };
+
+    setClientData(normalizedClientData);
+    persistClientData(normalizedClientData);
+
     setIsSubmitting(true);
     setSubmitError(null);
     // Intentamos abrir una nueva pestaña inmediatamente (evitar popup blocker)
@@ -370,9 +413,9 @@ export default function BookingPage() {
       );
 
       const booking = {
-        clientName: formData.clientName.trim(),
-        clientPhone: formData.clientPhone.trim(),
-        clientEmail: formData.clientEmail?.trim() || "",
+        clientName: normalizedClientData.clientName,
+        clientPhone: normalizedClientData.clientPhone,
+        clientEmail: normalizedClientData.clientEmail,
         date: Timestamp.fromDate(parseISO(selectedDate)),
         dateStr: selectedDate,
         status: "pending",
@@ -539,6 +582,7 @@ export default function BookingPage() {
             selectedDate={selectedDate}
             selectedServices={selectedServices}
             professionals={professionals}
+            initialClientData={clientData}
             onConfirm={handleConfirm}
             isSubmitting={isSubmitting}
             submitError={submitError}

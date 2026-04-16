@@ -1,5 +1,6 @@
 // src/pages/public/steps/StepClientForm.jsx
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -11,6 +12,7 @@ export default function StepClientForm({
   selectedDate,
   selectedServices,
   professionals,
+  initialClientData,
   onConfirm,
   isSubmitting,
   submitError,
@@ -18,8 +20,23 @@ export default function StepClientForm({
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
-  } = useForm();
+  } = useForm({
+    defaultValues: {
+      clientName: initialClientData?.clientName || "",
+      clientPhone: initialClientData?.clientPhone || "",
+      clientEmail: initialClientData?.clientEmail || "",
+    },
+  });
+
+  useEffect(() => {
+    reset({
+      clientName: initialClientData?.clientName || "",
+      clientPhone: initialClientData?.clientPhone || "",
+      clientEmail: initialClientData?.clientEmail || "",
+    });
+  }, [initialClientData, reset]);
 
   const totalPrice = selectedServices.reduce((s, sv) => s + sv.price, 0);
   const totalDuration = selectedServices.reduce((s, sv) => s + sv.duration, 0);
@@ -148,15 +165,14 @@ export default function StepClientForm({
         </div>
 
         <div className="form-field">
-          <label htmlFor="clientEmail">
-            Correo electrónico <span className="form-optional">(opcional)</span>
-          </label>
+          <label htmlFor="clientEmail">Correo electrónico *</label>
           <input
             id="clientEmail"
             type="email"
             placeholder="juan@email.com"
             autoComplete="email"
             {...register("clientEmail", {
+              required: "El correo electrónico es obligatorio",
               pattern: {
                 value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                 message: "Ingresa un correo válido",
