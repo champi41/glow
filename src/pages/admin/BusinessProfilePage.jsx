@@ -131,6 +131,7 @@ export default function BusinessProfilePage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [deposit, setDeposit] = useState(DEFAULT_DEPOSIT);
+  const [autoConfirmBookings, setAutoConfirmBookings] = useState(false);
 
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("general");
@@ -192,6 +193,8 @@ export default function BusinessProfilePage() {
     } else {
       setDeposit(DEFAULT_DEPOSIT);
     }
+
+    setAutoConfirmBookings(Boolean(tenant.autoConfirmBookings));
 
     hydratedTenantRef.current = tenantId;
   }, [tenantId, tenant]);
@@ -354,6 +357,7 @@ export default function BusinessProfilePage() {
               }
             : DEFAULT_DEPOSIT.bankInfo,
         },
+        autoConfirmBookings,
       });
       queryClient.invalidateQueries({ queryKey: ["tenant-by-id", tenantId] });
       setSaved(true);
@@ -631,6 +635,34 @@ export default function BusinessProfilePage() {
                 placeholder="Dirección"
               />
             </div>
+
+            <section className="business-profile-deposit">
+              <h3 className="business-profile-deposit__title">
+                Confirmación de reservas
+              </h3>
+              <p className="business-profile-deposit__subtitle">
+                Si activas esta opción, las reservas nuevas se crearán
+                automáticamente como confirmadas. Si la reserva requiere abono,
+                quedará pendiente aunque esta opción esté activa.
+              </p>
+
+              <div className="business-profile-deposit-toggle-wrap">
+                <span className="business-profile-deposit-toggle-label">
+                  Confirmar reservas automáticamente
+                </span>
+                <button
+                  type="button"
+                  className={`business-profile-deposit-toggle ${autoConfirmBookings ? "business-profile-deposit-toggle--on" : ""}`}
+                  onClick={() => setAutoConfirmBookings((v) => !v)}
+                  role="switch"
+                  aria-checked={autoConfirmBookings}
+                >
+                  <span className="business-profile-deposit-toggle__track">
+                    <span className="business-profile-deposit-toggle__thumb" />
+                  </span>
+                </button>
+              </div>
+            </section>
 
             {/* Sección Abono */}
             <section className="business-profile-deposit">

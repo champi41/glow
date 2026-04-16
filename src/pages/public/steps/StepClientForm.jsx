@@ -12,6 +12,7 @@ export default function StepClientForm({
   selectedSlotData,
   selectedDate,
   selectedServices,
+  showServiceDeposit = false,
   professionals,
   initialClientData,
   onConfirm,
@@ -44,14 +45,18 @@ export default function StepClientForm({
   // Calcular abonos por servicio y totales
   const depositPerService = {};
   let totalDeposit = 0;
-  selectedSlotData?.order.forEach((group) => {
-    group.services.forEach((service) => {
-      const dep = Number(service.depositAmount) || 0;
-      depositPerService[service.id] = dep;
-      totalDeposit += dep;
+  if (showServiceDeposit) {
+    selectedSlotData?.order.forEach((group) => {
+      group.services.forEach((service) => {
+        const dep = Number(service.depositAmount) || 0;
+        depositPerService[service.id] = dep;
+        totalDeposit += dep;
+      });
     });
-  });
-  const remainingAmount = totalPrice - totalDeposit;
+  }
+  const remainingAmount = showServiceDeposit
+    ? totalPrice - totalDeposit
+    : totalPrice;
 
   const formattedDate = selectedDate
     ? format(parseISO(selectedDate), "EEEE d 'de' MMMM", { locale: es })
@@ -83,7 +88,7 @@ export default function StepClientForm({
                 <span className="booking-summary__item-price">
                   {formatPrice(service.price)}
                 </span>
-                {depositPerService[service.id] > 0 && (
+                {showServiceDeposit && depositPerService[service.id] > 0 && (
                   <span className="booking-summary__item-deposit">
                     Abono: {formatPrice(depositPerService[service.id])}
                   </span>
@@ -101,14 +106,18 @@ export default function StepClientForm({
             </span>
           </div>
           <div className="booking-summary__total-prices">
-            <div className="booking-summary__deposit-now">
-              <span>Abono ahora</span>
-              <span>{formatPrice(totalDeposit)}</span>
-            </div>
-            <div className="booking-summary__remaining">
-              <span>A pagar después</span>
-              <span>{formatPrice(remainingAmount)}</span>
-            </div>
+            {showServiceDeposit && (
+              <>
+                <div className="booking-summary__deposit-now">
+                  <span>Abono ahora</span>
+                  <span>{formatPrice(totalDeposit)}</span>
+                </div>
+                <div className="booking-summary__remaining">
+                  <span>A pagar después</span>
+                  <span>{formatPrice(remainingAmount)}</span>
+                </div>
+              </>
+            )}
             <div className="booking-summary__grand-total">
               <span>Total</span>
               <span className="booking-summary__total-price">

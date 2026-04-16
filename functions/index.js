@@ -236,6 +236,7 @@ exports.onBookingCreated = onDocumentCreated(
   async (event) => {
     const booking = event.data.data();
     const tenantId = event.params.tenantId;
+    const bookingId = event.params.bookingId;
 
     const profIds = [
       ...new Set(
@@ -260,6 +261,20 @@ exports.onBookingCreated = onDocumentCreated(
         badge: "/pwa-192x192.png",
         data: { url: "/admin/reservas" },
       });
+    }
+
+    // Si la reserva se creó ya confirmada (auto-confirmación), enviar correo al cliente.
+    if (booking.status === "confirmed") {
+      try {
+        await sendBookingStatusEmailToClient({
+          tenantId,
+          bookingId,
+          booking,
+          status: "confirmed",
+        });
+      } catch (err) {
+        console.error("Error enviando correo de confirmación (create):", err);
+      }
     }
   },
 );

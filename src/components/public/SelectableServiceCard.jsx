@@ -2,7 +2,12 @@ import { CheckCircle2, Circle } from "lucide-react";
 import { formatPrice } from "../../utils/format.js";
 import "./SelectableServiceCard.css";
 
-export default function SelectableServiceCard({ service, selected, onToggle }) {
+export default function SelectableServiceCard({
+  service,
+  selected,
+  onToggle,
+  showDeposit = false,
+}) {
   const { name, description, price, duration } = service ?? {};
   const depositAmount = Number(service?.depositAmount) || 0;
 
@@ -28,7 +33,7 @@ export default function SelectableServiceCard({ service, selected, onToggle }) {
       </div>
       <div className="selectable-card__aside">
         <span className="selectable-card__price">{formatPrice(price)}</span>
-        {depositAmount > 0 && (
+        {showDeposit && depositAmount > 0 && (
           <span className="selectable-card__deposit">
             Abono: {formatPrice(depositAmount)}
           </span>

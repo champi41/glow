@@ -10,6 +10,7 @@ export default function StepServices({
   selectedServiceIds,
   onToggle,
   onContinue,
+  showServiceDeposit = false,
 }) {
   // Agrupar por categoría
   const grouped = useMemo(() => {
@@ -45,6 +46,7 @@ export default function StepServices({
               <SelectableServiceCard
                 key={service.id}
                 service={service}
+                showDeposit={showServiceDeposit}
                 selected={selectedServiceIds.has(service.id)}
                 onToggle={() => onToggle(service.id)}
               />

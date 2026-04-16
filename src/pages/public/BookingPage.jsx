@@ -99,6 +99,20 @@ function timeToMinLocal(t) {
   return h * 60 + m;
 }
 
+function getDepositRequiredForBooking(tenantDeposit, items) {
+  if (!tenantDeposit?.enabled) return false;
+
+  if (tenantDeposit.type === "fixed") {
+    return (Number(tenantDeposit.amount) || 0) > 0;
+  }
+
+  if (tenantDeposit.type === "per_service") {
+    return (items || []).some((item) => (Number(item.depositAmount) || 0) > 0);
+  }
+
+  return false;
+}
+
 export default function BookingPage() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
@@ -201,6 +215,9 @@ export default function BookingPage() {
     () => allServices.filter((s) => selectedServiceIds.has(s.id)),
     [allServices, selectedServiceIds],
   );
+  const showServiceDeposit =
+    tenant?.deposit?.enabled === true &&
+    tenant?.deposit?.type === "per_service";
 
   // ── Slots disponibles (derivado, se recalcula al cambiar fecha/assignments) ─
   const resolvedAssignments = useMemo(() => {
@@ -419,13 +436,20 @@ export default function BookingPage() {
         }),
       );
 
+      const depositRequired = getDepositRequiredForBooking(
+        tenant?.deposit,
+        items,
+      );
+      const autoConfirmed =
+        Boolean(tenant?.autoConfirmBookings) && !depositRequired;
+
       const booking = {
         clientName: normalizedClientData.clientName,
         clientPhone: normalizedClientData.clientPhone,
         clientEmail: normalizedClientData.clientEmail,
         date: Timestamp.fromDate(parseISO(selectedDate)),
         dateStr: selectedDate,
-        status: "pending",
+        status: autoConfirmed ? "confirmed" : "pending",
         createdAt: Timestamp.now(),
         notes: "",
         items,
@@ -547,6 +571,7 @@ export default function BookingPage() {
         {currentStep === STEP.SERVICES && (
           <StepServices
             services={allServices}
+            showServiceDeposit={showServiceDeposit}
             selectedServiceIds={selectedServiceIds}
             onToggle={handleToggleService}
             onContinue={handleContinueFromServices}
@@ -588,6 +613,7 @@ export default function BookingPage() {
             selectedSlotData={selectedSlotData}
             selectedDate={selectedDate}
             selectedServices={selectedServices}
+            showServiceDeposit={showServiceDeposit}
             professionals={professionals}
             initialClientData={clientData}
             onConfirm={handleConfirm}

@@ -11,6 +11,7 @@ import "./StepConfirmation.css";
 export default function StepConfirmation({ booking, tenant, slug }) {
   const navigate = useNavigate();
   const bank = tenant?.deposit?.bankInfo;
+  const isAutoConfirmed = booking?.status === "confirmed";
 
   const formattedDate = booking.dateStr
     ? format(parseISO(booking.dateStr), "EEEE d 'de' MMMM 'de' yyyy", {
@@ -31,9 +32,13 @@ export default function StepConfirmation({ booking, tenant, slug }) {
 
       {/* Título */}
       <div className="confirmation__header">
-        <h2 className="confirmation__title">¡Reserva confirmada!</h2>
+        <h2 className="confirmation__title">
+          {isAutoConfirmed ? "¡Reserva confirmada!" : "¡Reserva recibida!"}
+        </h2>
         <p className="confirmation__subtitle">
-          Te contactaremos por WhatsApp para confirmar tu hora.
+          {isAutoConfirmed
+            ? "Tu hora quedó confirmada automáticamente."
+            : "Te contactaremos por WhatsApp para confirmar tu hora."}
         </p>
       </div>
 

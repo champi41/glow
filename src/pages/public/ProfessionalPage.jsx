@@ -102,6 +102,9 @@ export default function ProfessionalPage() {
   const profServices = (services ?? []).filter((s) =>
     (s.professionalIds || []).includes(professional?.id),
   );
+  const showServiceDeposit =
+    tenant?.deposit?.enabled === true &&
+    tenant?.deposit?.type === "per_service";
 
   const servicesByCategory = profServices.reduce((acc, service) => {
     const cat = service.category || "Otros";
@@ -308,6 +311,7 @@ export default function ProfessionalPage() {
                     <SelectableServiceCard
                       key={service.id}
                       service={service}
+                      showDeposit={showServiceDeposit}
                       selected={selectedServiceIds.has(service.id)}
                       onToggle={() => toggleService(service.id)}
                     />

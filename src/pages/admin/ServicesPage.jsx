@@ -42,7 +42,9 @@ function ServiceModal({
   onClose,
 }) {
   const isEditing = !!service?.id;
-  const showDepositAmount = tenant?.deposit?.type === "per_service";
+  const showDepositAmount =
+    tenant?.deposit?.enabled === true &&
+    tenant?.deposit?.type === "per_service";
 
   const [form, setForm] = useState(() => {
     if (isEditing) {
