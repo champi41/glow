@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Timestamp } from "firebase/firestore";
-import { parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 import { useTenant } from "../../hooks/useTenant.js";
 import { useApplyTheme } from "../../hooks/useApplyTheme.js";
@@ -18,6 +18,7 @@ import {
   calcAvailableSlots,
   resolveAnyAssignments,
 } from "../../utils/slots.js";
+import { normalizeChileanPhone } from "../../utils/phone.js";
 
 import { ChevronLeft, X } from "lucide-react";
 
@@ -42,9 +43,10 @@ function readCachedClientData() {
     if (!raw) return { clientName: "", clientPhone: "", clientEmail: "" };
 
     const parsed = JSON.parse(raw);
+    const normalizedPhone = normalizeChileanPhone(parsed?.clientPhone || "");
     return {
       clientName: parsed?.clientName || "",
-      clientPhone: parsed?.clientPhone || "",
+      clientPhone: normalizedPhone || parsed?.clientPhone || "",
       clientEmail: parsed?.clientEmail || "",
     };
   } catch {
@@ -57,7 +59,10 @@ function persistClientData(data) {
 
   const payload = {
     clientName: data?.clientName?.trim?.() || "",
-    clientPhone: data?.clientPhone?.trim?.() || "",
+    clientPhone:
+      normalizeChileanPhone(data?.clientPhone || "") ||
+      data?.clientPhone?.trim?.() ||
+      "",
     clientEmail: data?.clientEmail?.trim?.() || "",
   };
 
@@ -233,7 +238,7 @@ export default function BookingPage() {
     });
 
     // Si la fecha seleccionada es hoy, filtrar horas que ya pasaron
-    const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const todayStr = format(new Date(), "yyyy-MM-dd");
     if (selectedDate === todayStr) {
       const now = new Date();
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -368,9 +373,11 @@ export default function BookingPage() {
   }
 
   async function handleConfirm(formData) {
+    const normalizedPhone = normalizeChileanPhone(formData.clientPhone || "");
+
     const normalizedClientData = {
       clientName: formData.clientName?.trim?.() || "",
-      clientPhone: formData.clientPhone?.trim?.() || "",
+      clientPhone: normalizedPhone || formData.clientPhone?.trim?.() || "",
       clientEmail: formData.clientEmail?.trim?.() || "",
     };
 

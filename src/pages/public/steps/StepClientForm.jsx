@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatPrice, getFirstName } from "../../../utils/format.js";
+import { normalizeChileanPhone } from "../../../utils/phone.js";
 import "./StepClientForm.css";
 
 export default function StepClientForm({
@@ -125,11 +126,11 @@ export default function StepClientForm({
         noValidate
       >
         <div className="form-field">
-          <label htmlFor="clientName">Nombre completo *</label>
+          <label htmlFor="clientName">Nombre y Apellido *</label>
           <input
             id="clientName"
             type="text"
-            placeholder="Juan Pérez"
+            placeholder="Lola Mento"
             autoComplete="name"
             {...register("clientName", {
               required: "El nombre es obligatorio",
@@ -145,18 +146,18 @@ export default function StepClientForm({
         </div>
 
         <div className="form-field">
-          <label htmlFor="clientPhone">WhatsApp *</label>
+          <label htmlFor="clientPhone">Telefono *</label>
           <input
             id="clientPhone"
             type="tel"
-            placeholder="+56 9 1234 5678"
+            placeholder="9 1234 5678"
             autoComplete="tel"
+            inputMode="tel"
             {...register("clientPhone", {
-              required: "El número de WhatsApp es obligatorio",
-              pattern: {
-                value: /^\+?56\s?9\s?\d{4}\s?\d{4}$/,
-                message: "Ingresa un número chileno válido (+56 9XXXX XXXX)",
-              },
+              required: "El número de Telefono es obligatorio",
+              validate: (value) =>
+                !!normalizeChileanPhone(value) ||
+                "Ingresa un número chileno válido (ej: 9 1234 5678)",
             })}
           />
           {errors.clientPhone && (

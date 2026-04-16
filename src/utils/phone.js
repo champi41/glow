@@ -15,3 +15,31 @@ export function formatPhone(raw) {
   }
   return raw;
 }
+
+/**
+ * Normaliza teléfonos chilenos móviles a formato internacional +569XXXXXXXX.
+ * Acepta variantes como: +56 9 1234 5678, +56912345678, 56912345678, 912345678.
+ * @param {string} raw
+ * @returns {string | null}
+ */
+export function normalizeChileanPhone(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  const digits = raw.replace(/\D/g, "");
+
+  // +56 9XXXXXXXX
+  if (digits.length === 11 && digits.startsWith("56") && digits[2] === "9") {
+    return `+${digits}`;
+  }
+
+  // 9XXXXXXXX
+  if (digits.length === 9 && digits.startsWith("9")) {
+    return `+56${digits}`;
+  }
+
+  // 09XXXXXXXX
+  if (digits.length === 10 && digits.startsWith("09")) {
+    return `+56${digits.slice(1)}`;
+  }
+
+  return null;
+}
