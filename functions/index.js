@@ -1,4 +1,5 @@
 require("dotenv").config();
+const crypto = require("node:crypto");
 
 const {
   onDocumentCreated,
@@ -17,6 +18,95 @@ webpush.setVapidDetails(
 );
 
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+
+function getCloudinaryConfig() {
+  return {
+    cloudName:
+      process.env.CLOUDINARY_CLOUD_NAME ||
+      process.env.VITE_CLOUDINARY_CLOUD_NAME ||
+      "",
+    apiKey: process.env.CLOUDINARY_API_KEY || "",
+    apiSecret: process.env.CLOUDINARY_API_SECRET || "",
+  };
+}
+
+function normalizeMediaUrl(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[?#].*$/, "");
+}
+
+function extractCloudinaryPublicId(url) {
+  const clean = normalizeMediaUrl(url);
+  if (!clean) return null;
+
+  let parsed;
+  try {
+    parsed = new URL(clean);
+  } catch {
+    return null;
+  }
+
+  if (!parsed.hostname.includes("res.cloudinary.com")) return null;
+
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const uploadIndex = segments.indexOf("upload");
+  if (uploadIndex === -1) return null;
+
+  const afterUpload = segments.slice(uploadIndex + 1);
+  if (afterUpload.length === 0) return null;
+
+  const versionIndex = afterUpload.findIndex((s) => /^v\d+$/.test(s));
+  const idSegments =
+    versionIndex >= 0 ? afterUpload.slice(versionIndex + 1) : afterUpload;
+  if (idSegments.length === 0) return null;
+
+  const lastIndex = idSegments.length - 1;
+  idSegments[lastIndex] = idSegments[lastIndex].replace(/\.[^/.]+$/, "");
+
+  return decodeURIComponent(idSegments.join("/"));
+}
+
+async function deleteCloudinaryByUrl(url) {
+  const publicId = extractCloudinaryPublicId(url);
+  if (!publicId) return false;
+
+  const { cloudName, apiKey, apiSecret } = getCloudinaryConfig();
+  if (!cloudName || !apiKey || !apiSecret) {
+    console.warn("Cloudinary no configurado para limpieza automática.");
+    return false;
+  }
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const toSign = `invalidate=true&public_id=${publicId}&timestamp=${timestamp}${apiSecret}`;
+  const signature = crypto.createHash("sha1").update(toSign).digest("hex");
+
+  const body = new URLSearchParams({
+    public_id: publicId,
+    timestamp: String(timestamp),
+    api_key: apiKey,
+    signature,
+    invalidate: "true",
+  });
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Cloudinary destroy error (${res.status}): ${text}`);
+  }
+
+  return true;
+}
 
 function normalizeBaseUrl(url) {
   return String(url || "")
@@ -291,6 +381,8 @@ exports.onBookingCancelled = onDocumentUpdated(
     if (before.status === after.status) return null;
     if (after.status !== "cancelled") return null;
 
+    const cancelledBy = (after.cancelledBy || "").toLowerCase();
+
     const profIds = [
       ...new Set(
         (after.items || []).map((i) => i.professionalId).filter(Boolean),
@@ -309,22 +401,28 @@ exports.onBookingCancelled = onDocumentUpdated(
 
       await sendPushNotification(subscription, {
         title: "❌ Reserva cancelada",
-        body: `${after.clientName} canceló · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`,
+        body:
+          cancelledBy === "client"
+            ? `${after.clientName} canceló · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`
+            : `Se canceló una reserva · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
         data: { url: "/admin/reservas" },
       });
     }
 
-    try {
-      await sendBookingStatusEmailToClient({
-        tenantId,
-        bookingId,
-        booking: after,
-        status: "cancelled",
-      });
-    } catch (err) {
-      console.error("Error enviando correo de cancelación:", err);
+    // Enviamos correo de cancelación solo cuando la cancelación fue hecha por el staff.
+    if (cancelledBy === "professional") {
+      try {
+        await sendBookingStatusEmailToClient({
+          tenantId,
+          bookingId,
+          booking: after,
+          status: "cancelled",
+        });
+      } catch (err) {
+        console.error("Error enviando correo de cancelación:", err);
+      }
     }
 
     return null;
@@ -391,6 +489,111 @@ exports.onDepositProofUploaded = onDocumentUpdated(
         badge: "/pwa-192x192.png",
         data: { url: "/admin/reservas" },
       });
+    }
+
+    return null;
+  },
+);
+
+// ─── Trigger: limpiar comprobante cuando reserva se completa ───
+exports.onBookingCompletedCleanupDepositProof = onDocumentUpdated(
+  "tenants/{tenantId}/bookings/{bookingId}",
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    const tenantId = event.params.tenantId;
+    const bookingId = event.params.bookingId;
+
+    if (before.status === after.status) return null;
+    if (after.status !== "completed") return null;
+
+    const proofUrl = after.depositProofUrl || "";
+    if (!proofUrl) return null;
+
+    try {
+      await deleteCloudinaryByUrl(proofUrl);
+
+      await getFirestore()
+        .doc(`tenants/${tenantId}/bookings/${bookingId}`)
+        .update({ depositProofUrl: null });
+    } catch (err) {
+      console.error("Error limpiando comprobante de Cloudinary:", err);
+    }
+
+    return null;
+  },
+);
+
+// ─── Trigger: limpiar imágenes de negocio reemplazadas/eliminadas ───
+exports.onTenantImagesChangedCleanup = onDocumentUpdated(
+  "tenants/{tenantId}",
+  async (event) => {
+    const before = event.data.before.data() || {};
+    const after = event.data.after.data() || {};
+
+    const toDelete = [];
+
+    const beforeLogo = normalizeMediaUrl(before.logoUrl);
+    const afterLogo = normalizeMediaUrl(after.logoUrl);
+    if (beforeLogo && beforeLogo !== afterLogo) toDelete.push(beforeLogo);
+
+    const beforeCover = normalizeMediaUrl(before.coverUrl);
+    const afterCover = normalizeMediaUrl(after.coverUrl);
+    if (beforeCover && beforeCover !== afterCover) toDelete.push(beforeCover);
+
+    if (toDelete.length === 0) return null;
+
+    for (const url of toDelete) {
+      try {
+        await deleteCloudinaryByUrl(url);
+      } catch (err) {
+        console.error("Error limpiando imagen de negocio en Cloudinary:", err);
+      }
+    }
+
+    return null;
+  },
+);
+
+// ─── Trigger: limpiar imágenes de profesional reemplazadas/eliminadas ───
+exports.onProfessionalImagesChangedCleanup = onDocumentUpdated(
+  "tenants/{tenantId}/professionals/{professionalId}",
+  async (event) => {
+    const before = event.data.before.data() || {};
+    const after = event.data.after.data() || {};
+
+    const toDelete = new Set();
+
+    const beforePhoto = normalizeMediaUrl(before.photoUrl);
+    const afterPhoto = normalizeMediaUrl(after.photoUrl);
+    if (beforePhoto && beforePhoto !== afterPhoto) toDelete.add(beforePhoto);
+
+    const beforePortfolio = new Set(
+      (before.portfolioUrls || [])
+        .map((u) => normalizeMediaUrl(u))
+        .filter(Boolean),
+    );
+    const afterPortfolio = new Set(
+      (after.portfolioUrls || [])
+        .map((u) => normalizeMediaUrl(u))
+        .filter(Boolean),
+    );
+
+    for (const url of beforePortfolio) {
+      if (!afterPortfolio.has(url)) toDelete.add(url);
+    }
+
+    if (toDelete.size === 0) return null;
+
+    for (const url of toDelete) {
+      try {
+        await deleteCloudinaryByUrl(url);
+      } catch (err) {
+        console.error(
+          "Error limpiando imagen de profesional en Cloudinary:",
+          err,
+        );
+      }
     }
 
     return null;

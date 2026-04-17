@@ -1,10 +1,11 @@
 // src/pages/admin/ServicesPage.jsx
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   collection,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -15,7 +16,7 @@ import { useServices } from "../../hooks/useServices.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPrice } from "../../utils/format.js";
-import { Plus, Pencil, ToggleLeft, ToggleRight, X, Check } from "lucide-react";
+import { Plus, ToggleLeft, ToggleRight, X, Check, Trash2 } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./ServicesPage.css";
 
@@ -39,6 +40,7 @@ function ServiceModal({
   professionals,
   existingCategories,
   onSave,
+  onDelete,
   onClose,
 }) {
   const isEditing = !!service?.id;
@@ -119,6 +121,22 @@ function ServiceModal({
     });
 
     setSaving(false);
+  }
+
+  async function handleDelete() {
+    if (!isEditing || !service?.id) return;
+
+    const confirmed = window.confirm(
+      `¿Eliminar "${service.name}"?\nEsta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+
+    setSaving(true);
+    try {
+      await onDelete(service.id);
+    } finally {
+      setSaving(false);
+    }
   }
 
   // Categorías disponibles: existentes + nueva si se escribe
@@ -309,6 +327,15 @@ function ServiceModal({
         </div>
 
         <div className="modal-card__actions">
+          {isEditing && (
+            <button
+              className="btn-danger"
+              onClick={handleDelete}
+              disabled={saving}
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
           <button className="btn-outline" onClick={onClose} disabled={saving}>
             Cancelar
           </button>
@@ -317,11 +344,7 @@ function ServiceModal({
             onClick={handleSave}
             disabled={saving}
           >
-            {saving
-              ? "Guardando..."
-              : isEditing
-                ? "Guardar cambios"
-                : "Crear servicio"}
+            {saving ? "Guardando..." : isEditing ? "Guardar" : "Crear"}
           </button>
         </div>
       </div>
@@ -339,6 +362,15 @@ function ServiceCard({ service, professionals, onEdit, onToggle }) {
   return (
     <div
       className={`service-card ${!service.isActive ? "service-card--inactive" : ""}`}
+      onClick={() => onEdit(service)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit(service);
+        }
+      }}
     >
       <div className="service-card__main">
         <div className="service-card__info">
@@ -352,22 +384,21 @@ function ServiceCard({ service, professionals, onEdit, onToggle }) {
         </div>
         <div className="service-card__actions">
           <button
-            className="icon-btn"
-            onClick={() => onEdit(service)}
-            title="Editar"
-          >
-            <Pencil size={15} />
-          </button>
-          <button
-            className="icon-btn"
-            onClick={() => onToggle(service)}
+            className={`service-card-toggle ${service.isActive ? "service-card-toggle--on" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(service);
+            }}
             title={service.isActive ? "Desactivar" : "Activar"}
+            role="switch"
+            aria-checked={service.isActive}
+            aria-label={
+              service.isActive ? "Desactivar servicio" : "Activar servicio"
+            }
           >
-            {service.isActive ? (
-              <ToggleRight size={20} className="toggle-btn--on" />
-            ) : (
-              <ToggleLeft size={20} className="toggle-btn--off" />
-            )}
+            <span className="service-card-toggle__track">
+              <span className="service-card-toggle__thumb" />
+            </span>
           </button>
         </div>
       </div>
@@ -386,6 +417,17 @@ export default function ServicesPage({ embedded = false }) {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editService, setEditService] = useState(null);
+
+  useEffect(() => {
+    if (!modalOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [modalOpen]);
 
   // Categorías existentes derivadas de los servicios
   const existingCategories = useMemo(() => {
@@ -434,17 +476,19 @@ export default function ServicesPage({ embedded = false }) {
     }
   }
 
-  async function handleToggle(service) {
-    const accion = service.isActive ? "desactivar" : "activar";
-    const confirm = window.confirm(
-      `¿Seguro que quieres ${accion} "${service.name}"?${
-        service.isActive
-          ? "\nNo aparecerá en el menú de reservas."
-          : "\nVolverá a aparecer en el menú de reservas."
-      }`,
-    );
-    if (!confirm) return;
+  async function handleDelete(serviceId) {
+    try {
+      await deleteDoc(doc(db, "tenants", tenantId, "services", serviceId));
+      queryClient.invalidateQueries({ queryKey: ["services", tenantId] });
+      setModalOpen(false);
+      setEditService(null);
+    } catch (err) {
+      console.error("Error eliminando servicio:", err);
+      alert("No se pudo eliminar el servicio. Intenta nuevamente.");
+    }
+  }
 
+  async function handleToggle(service) {
     try {
       await updateDoc(doc(db, "tenants", tenantId, "services", service.id), {
         isActive: !service.isActive,
@@ -496,6 +540,7 @@ export default function ServicesPage({ embedded = false }) {
           professionals={professionals}
           existingCategories={existingCategories}
           onSave={handleSave}
+          onDelete={handleDelete}
           onClose={() => setModalOpen(false)}
         />
       )}

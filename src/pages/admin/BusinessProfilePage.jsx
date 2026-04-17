@@ -388,6 +388,7 @@ export default function BusinessProfilePage() {
     : "?";
 
   const coverDisplay = coverPreview || form.coverUrl;
+
   const currentSection =
     SECTION_OPTIONS.find((option) => option.key === activeSection) ||
     SECTION_OPTIONS[0];
@@ -441,7 +442,10 @@ export default function BusinessProfilePage() {
           )}
         </div>
         {activeSection === "general" ? (
-          <form className="business-profile-form" onSubmit={handleSubmit}>
+          <form
+            className="business-profile-form business-profile-form--general"
+            onSubmit={handleSubmit}
+          >
             {/* Portada */}
             <div className="business-profile-cover-wrap">
               <label className="business-profile-cover-label">
@@ -825,7 +829,7 @@ export default function BusinessProfilePage() {
 
             <button
               type="submit"
-              className="btn-primary business-profile-save-btn"
+              className="btn-primary business-profile-save-btn business-profile-save-btn--fixed"
               disabled={saving}
             >
               {saved ? (

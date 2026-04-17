@@ -1,5 +1,5 @@
 /* src/pages/admin/BusinessProfilePage.css */
-.business-profile-page{
+.business-profile-page {
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -758,6 +758,19 @@
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 4px;
+}
+
+.business-profile-form--general {
+  padding-bottom: 60px;
+}
+
+.business-profile-save-btn--fixed {
+  position: fixed;
+  width: auto;
+  left: 15px;
+  right: 15px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 90px);
+  z-index: 260;
+  justify-content: center;
+  box-shadow: 0 8px 22px rgba(10, 10, 10, 0.18);
 }

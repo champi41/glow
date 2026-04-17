@@ -332,9 +332,14 @@ export default function BookingsPage() {
   async function handleUpdateStatus(bookingId, newStatus) {
     if (!tenantId) return;
     try {
-      await updateDoc(doc(db, "tenants", tenantId, "bookings", bookingId), {
+      const payload = {
         status: newStatus,
-      });
+        ...(newStatus === "cancelled" ? { cancelledBy: "professional" } : {}),
+      };
+      await updateDoc(
+        doc(db, "tenants", tenantId, "bookings", bookingId),
+        payload,
+      );
       queryClient.invalidateQueries({
         queryKey: ["bookings-date", tenantId, selectedDate],
       });

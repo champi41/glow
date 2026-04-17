@@ -446,9 +446,14 @@ export default function AgendaPage() {
 
   async function handleUpdateStatus(bookingId, newStatus) {
     try {
-      await updateDoc(doc(db, "tenants", tenantId, "bookings", bookingId), {
+      const payload = {
         status: newStatus,
-      });
+        ...(newStatus === "cancelled" ? { cancelledBy: "professional" } : {}),
+      };
+      await updateDoc(
+        doc(db, "tenants", tenantId, "bookings", bookingId),
+        payload,
+      );
       queryClient.invalidateQueries({
         queryKey: ["bookings-date", tenantId, selectedDay],
       });

@@ -197,7 +197,10 @@ export default function BookingStatusPage() {
     setCancelling(true);
     try {
       const ref = doc(db, "tenants", tenantId, "bookings", bookingId);
-      await updateDoc(ref, { status: "cancelled" });
+      await updateDoc(ref, {
+        status: "cancelled",
+        cancelledBy: "client",
+      });
       // onSnapshot actualizará la UI; Firebase Functions enviará la notificación a los profesionales
     } catch (err) {
       setCancelError(err.message || "No se pudo cancelar la reserva.");

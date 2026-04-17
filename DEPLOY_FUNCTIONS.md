@@ -38,6 +38,11 @@ BREVO_SENDER_NAME=Slotti
 
 # URL pública de la app para links en correo
 APP_BASE_URL=https://slotti.vercel.app
+
+# Cloudinary (limpieza automática de imágenes)
+CLOUDINARY_CLOUD_NAME=tu_cloud_name
+CLOUDINARY_API_KEY=tu_api_key
+CLOUDINARY_API_SECRET=tu_api_secret
 ```
 
 Notas:
@@ -45,6 +50,9 @@ Notas:
 - `BREVO_SENDER_EMAIL` debe ser un remitente válido en tu cuenta Brevo.
 - `APP_BASE_URL` se usa para construir el enlace `/:slug/reserva/:bookingId` dentro del correo.
 - Si no hay `clientEmail` en la reserva, no se envía correo.
+- `CLOUDINARY_*` permite borrar automáticamente:
+  - comprobantes de abono al completar reserva,
+  - fotos reemplazadas/eliminadas de negocio y profesionales.
 
 ## 4. Desplegar solo las functions
 
@@ -68,6 +76,9 @@ firebase deploy --only functions:onDepositProofUploaded
    - `onBookingConfirmed` (reserva confirmada, correo cliente)
    - `onBookingCancelled` (reserva cancelada)
    - `onDepositProofUploaded` (comprobante subido)
+   - `onBookingCompletedCleanupDepositProof` (limpia comprobante en Cloudinary)
+   - `onTenantImagesChangedCleanup` (limpia logo/portada reemplazados)
+   - `onProfessionalImagesChangedCleanup` (limpia foto/portfolio reemplazados)
 
 ## Resumen de notificaciones
 

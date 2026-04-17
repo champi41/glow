@@ -1,6 +1,6 @@
 // src/pages/admin/SchedulePage.jsx
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../config/firebase.js";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -157,8 +157,17 @@ function DayRow({ day, value, onChange, isProf = false }) {
 // ─── Sección de horario del negocio ──────────────────────────
 function BusinessSchedule({ tenant, tenantId, queryClient }) {
   const [hours, setHours] = useState(() => tenant?.businessHours || {});
+  const [initialHours, setInitialHours] = useState(
+    () => tenant?.businessHours || {},
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const next = tenant?.businessHours || {};
+    setHours(next);
+    setInitialHours(next);
+  }, [tenant?.businessHours]);
 
   function handleDayChange(dayKey, value) {
     setHours((h) => ({ ...h, [dayKey]: value }));
@@ -172,6 +181,7 @@ function BusinessSchedule({ tenant, tenantId, queryClient }) {
         businessHours: hours,
       });
       queryClient.invalidateQueries({ queryKey: ["tenant-by-id", tenantId] });
+      setInitialHours(hours);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -183,7 +193,7 @@ function BusinessSchedule({ tenant, tenantId, queryClient }) {
   }
 
   return (
-    <div className="schedule-section">
+    <div className="schedule-section schedule-section--business">
       <p className="schedule-section__title">Horario del negocio</p>
       <p className="schedule-section__subtitle">
         Los profesionales sin horario propio heredan este horario.
@@ -201,7 +211,7 @@ function BusinessSchedule({ tenant, tenantId, queryClient }) {
       </div>
 
       <button
-        className="btn-primary schedule-save-btn"
+        className="btn-primary schedule-save-btn schedule-save-btn--fixed"
         onClick={handleSave}
         disabled={saving}
       >
@@ -232,8 +242,12 @@ function ProfSchedule({ prof, tenantId, queryClient }) {
     // Inicializar con todos los días desactivados
     return Object.fromEntries(DAYS.map((d) => [d.key, { ...DEFAULT_AVAIL }]));
   });
+  const [initialAvailability, setInitialAvailability] = useState(
+    hasOwn ? prof.availability : null,
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const currentAvailability = useOwn ? avail : null;
 
   function handleDayChange(dayKey, value) {
     setAvail((a) => ({ ...a, [dayKey]: value }));
@@ -247,6 +261,7 @@ function ProfSchedule({ prof, tenantId, queryClient }) {
         availability: useOwn ? avail : null,
       });
       queryClient.invalidateQueries({ queryKey: ["professionals", tenantId] });
+      setInitialAvailability(currentAvailability);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -390,7 +405,6 @@ export default function SchedulePage({ embedded = false }) {
 
   const content = (
     <div className="schedule-page">
-
       {/* Horario del negocio */}
       <BusinessSchedule
         tenant={tenant}
