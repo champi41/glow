@@ -4,7 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { CheckCircle2, CalendarPlus, ArrowLeft } from "lucide-react";
-import { formatPrice, getFirstName } from "../../../utils/format.js";
+import {
+  formatEntityPrice,
+  formatPrice,
+  formatTotalPrice,
+  getFirstName,
+} from "../../../utils/format.js";
 import { generateICS } from "../../../utils/ics.js";
 import "./StepConfirmation.css";
 
@@ -59,7 +64,7 @@ export default function StepConfirmation({ booking, tenant, slug }) {
               </span>
             </div>
             <span className="confirmation__item-price">
-              {formatPrice(item.price)}
+              {formatEntityPrice(item)}
             </span>
           </div>
         ))}
@@ -72,7 +77,7 @@ export default function StepConfirmation({ booking, tenant, slug }) {
             </span>
           </div>
           <span className="confirmation__total-price">
-            {formatPrice(booking.totalPrice)}
+            {formatTotalPrice(booking.items)}
           </span>
         </div>
 

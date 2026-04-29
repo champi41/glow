@@ -39,10 +39,11 @@ service cloud.firestore {
             && request.resource.data.depositStatus == 'uploaded'
             && request.resource.data.depositProofUrl is string
             && request.resource.data.depositProofUrl.size() > 0)
-        // Cliente sin login: solo cancelar (status -> cancelled desde pending o confirmed)
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-            && request.resource.data.status == 'cancelled'
-            && resource.data.status in ['pending', 'confirmed']);
+        // Cliente sin login: solo cancelar (status -> cancelled) marcando origen
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy'])
+          && request.resource.data.status == 'cancelled'
+          && request.resource.data.cancelledBy == 'client'
+          && resource.data.status in ['pending', 'confirmed']);
       }
 			match /blocks/{blockId} {
   			allow read: if true;        // ← agregar lectura pública
@@ -52,7 +53,7 @@ service cloud.firestore {
 			}
       // Reseñas: cualquiera puede leer (comprobar si ya hay reseña) y crear (enviar reseña)
       // Solo usuarios del tenant pueden actualizar/eliminar (admin aprueba/rechaza)
-      match /reviews/{reviewId} {
+
         allow read, create: if true;
         allow update, delete: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;

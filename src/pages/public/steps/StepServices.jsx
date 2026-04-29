@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import SelectableServiceCard from "../../../components/public/SelectableServiceCard.jsx";
-import { formatPrice } from "../../../utils/format.js";
+import { formatTotalPrice } from "../../../utils/format.js";
 import "./StepServices.css";
 
 export default function StepServices({
@@ -24,7 +24,6 @@ export default function StepServices({
   }, [services]);
 
   const selectedServices = services.filter((s) => selectedServiceIds.has(s.id));
-  const totalPrice = selectedServices.reduce((s, sv) => s + sv.price, 0);
   const totalDuration = selectedServices.reduce((s, sv) => s + sv.duration, 0);
   const count = selectedServiceIds.size;
 
@@ -66,7 +65,7 @@ export default function StepServices({
               {count} servicio{count > 1 ? "s" : ""}
             </span>
             <span className="step-services__meta">
-              {formatPrice(totalPrice)} · {totalDuration} min
+              {formatTotalPrice(selectedServices)} · {totalDuration} min
             </span>
           </div>
           <button

@@ -19,6 +19,7 @@ import {
   resolveAnyAssignments,
 } from "../../utils/slots.js";
 import { normalizeChileanPhone } from "../../utils/phone.js";
+import { getTotalPriceInfo, normalizePriceType } from "../../utils/format.js";
 
 import { ChevronLeft, X } from "lucide-react";
 
@@ -102,12 +103,21 @@ function timeToMinLocal(t) {
 function getDepositRequiredForBooking(tenantDeposit, items) {
   if (!tenantDeposit?.enabled) return false;
 
+  const list = Array.isArray(items) ? items : [];
+  const allItemsFree =
+    list.length > 0 && list.every((i) => normalizePriceType(i?.priceType) === "free");
+  if (allItemsFree) return false;
+
   if (tenantDeposit.type === "fixed") {
     return (Number(tenantDeposit.amount) || 0) > 0;
   }
 
   if (tenantDeposit.type === "per_service") {
-    return (items || []).some((item) => (Number(item.depositAmount) || 0) > 0);
+    return (list || []).some(
+      (item) =>
+        normalizePriceType(item?.priceType) !== "free" &&
+        (Number(item.depositAmount) || 0) > 0,
+    );
   }
 
   return false;
@@ -421,6 +431,30 @@ export default function BookingPage() {
       const items = selectedSlotData.order.flatMap((group) =>
         group.services.map((service) => {
           const prof = professionals.find((p) => p.id === group.profId);
+          const priceType = normalizePriceType(service?.priceType);
+          const priceFields =
+            priceType === "range"
+              ? {
+                  priceType,
+                  price: Number(service.priceMin) || 0,
+                  priceMin: Number(service.priceMin) || 0,
+                  priceMax: Number(service.priceMax) || 0,
+                }
+              : priceType === "tbd"
+                ? {
+                    priceType,
+                    price: 0,
+                    priceText: (service.priceText || "").trim() || undefined,
+                  }
+                : priceType === "free"
+                  ? { priceType, price: 0 }
+                  : { priceType: "fixed", price: Number(service.price) || 0 };
+
+          // Firestore no permite undefined: eliminamos priceText si no existe.
+          if (priceFields.priceText === undefined) {
+            delete priceFields.priceText;
+          }
+
           return {
             serviceId: service.id,
             serviceName: service.name,
@@ -429,12 +463,16 @@ export default function BookingPage() {
             professionalSlug: prof?.slug || "",
             startTime: service.start || group.start,
             endTime: service.end || group.end,
-            price: service.price,
+            ...priceFields,
             duration: service.duration,
-            depositAmount: Number(service.depositAmount) || 0,
+            depositAmount:
+              priceType === "free" ? 0 : Number(service.depositAmount) || 0,
           };
         }),
       );
+
+      const totalPriceInfo = getTotalPriceInfo(items);
+      const totalPrice = totalPriceInfo.kind === "fixed" ? totalPriceInfo.amount : null;
 
       const depositRequired = getDepositRequiredForBooking(
         tenant?.deposit,
@@ -453,7 +491,7 @@ export default function BookingPage() {
         createdAt: Timestamp.now(),
         notes: "",
         items,
-        totalPrice: items.reduce((s, i) => s + i.price, 0),
+        totalPrice,
         totalDuration: items.reduce((s, i) => s + i.duration, 0),
       };
 

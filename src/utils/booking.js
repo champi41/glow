@@ -5,14 +5,20 @@
  * @param {string | null} profIdFixed - Optional fixed professional from query param
  * @returns {{ autoAssigned: Record<string, string>, needsSelection: string[] }}
  */
-export function resolveAssignments(selectedServices, professionals, profIdFixed) {
+export function resolveAssignments(
+  selectedServices,
+  professionals,
+  profIdFixed,
+) {
   const autoAssigned = {};
   const needsSelection = [];
 
   const availableProfsByService = {};
   for (const service of selectedServices) {
     const ids = service.professionalIds || [];
-    availableProfsByService[service.id] = professionals.filter((p) => ids.includes(p.id));
+    availableProfsByService[service.id] = professionals.filter((p) =>
+      ids.includes(p.id),
+    );
   }
 
   for (const service of selectedServices) {
@@ -63,7 +69,13 @@ export function mergeAssignments(assignments, autoAssigned, needsSelection) {
  * @param {Array} existingBookings - bookings for the selected date
  * @returns {Record<string, string>} assignments with 'any' resolved to prof id
  */
-export function resolveAnyAssignments(assignments, serviceIdsWithAny, selectedServices, professionals, existingBookings) {
+export function resolveAnyAssignments(
+  assignments,
+  serviceIdsWithAny,
+  selectedServices,
+  professionals,
+  existingBookings,
+) {
   const result = { ...assignments };
   const bookingsByProf = {};
   for (const b of existingBookings) {
@@ -80,7 +92,7 @@ export function resolveAnyAssignments(assignments, serviceIdsWithAny, selectedSe
     const available = professionals.filter((p) => ids.includes(p.id));
     if (available.length === 0) continue;
     const leastBusy = available.reduce((a, b) =>
-      (bookingsByProf[a.id] ?? 0) <= (bookingsByProf[b.id] ?? 0) ? a : b
+      (bookingsByProf[a.id] ?? 0) <= (bookingsByProf[b.id] ?? 0) ? a : b,
     );
     result[serviceId] = leastBusy.id;
   }
@@ -95,8 +107,14 @@ export function resolveAnyAssignments(assignments, serviceIdsWithAny, selectedSe
  * @param {Array} professionals
  * @returns {object} Booking doc + totalDuration (for caller to add Timestamp etc)
  */
-export function buildBookingDoc(bookingState, selectedServices, finalAssignments, professionals) {
-  const { selectedDate, selectedSlot, clientName, clientPhone, clientEmail } = bookingState;
+export function buildBookingDoc(
+  bookingState,
+  selectedServices,
+  finalAssignments,
+  professionals,
+) {
+  const { selectedDate, selectedSlot, clientName, clientPhone, clientEmail } =
+    bookingState;
   const getProf = (id) => professionals.find((p) => p.id === id) || {};
 
   const profIds = [...new Set(Object.values(finalAssignments))];

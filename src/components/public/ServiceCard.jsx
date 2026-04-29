@@ -1,8 +1,8 @@
-import { formatPrice } from "../../utils/format.js";
+import { formatEntityPrice, formatPrice } from "../../utils/format.js";
 import "./ServiceCard.css";
 
 export default function ServiceCard({ service, showDeposit = false }) {
-  const { name, description, price, duration } = service ?? {};
+  const { name, description, duration } = service ?? {};
   const depositAmount = Number(service?.depositAmount) || 0;
 
   return (
@@ -15,7 +15,7 @@ export default function ServiceCard({ service, showDeposit = false }) {
       </div>
       <span className="service-row__dots" aria-hidden="true" />
       <div className="service-row__right">
-        <span className="service-row__price">{formatPrice(price)}</span>
+        <span className="service-row__price">{formatEntityPrice(service)}</span>
         {showDeposit && depositAmount > 0 && (
           <span className="service-row__deposit">
             Abono: {formatPrice(depositAmount)}

@@ -19,7 +19,11 @@ import { useBlocksByDate } from "../../hooks/useBlocksByDate.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
 import { useTenantById } from "../../hooks/useTenantById.js";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatPrice, getFirstName } from "../../utils/format.js";
+import {
+  formatEntityPrice,
+  formatTotalPrice,
+  getFirstName,
+} from "../../utils/format.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./AgendaPage.css";
 
@@ -78,9 +82,11 @@ function AgendaBookingBlock({ item, booking, topPx, heightPx, onClick }) {
         background: STATUS_BG[booking.status],
       }}
       onClick={() => onClick(booking)}
-      title={`${item.startTime}–${item.endTime} · ${booking.clientName}`}
+      title={`${item.startTime} - ${item.endTime} · ${booking.clientName}`}
     >
-      <span className="agenda-block__time">{item.startTime}</span>
+      <span className="agenda-block__time">
+        {item.startTime} - {item.endTime}
+      </span>
       <span className="agenda-block__name">{booking.clientName}</span>
       <span className="agenda-block__service">{item.serviceName}</span>
     </div>
@@ -344,14 +350,14 @@ function BookingModal({ booking, onClose, onUpdateStatus }) {
                 {item.startTime}–{item.endTime}
               </span>
               <span className="modal-item__price">
-                {formatPrice(item.price)}
+                {formatEntityPrice(item)}
               </span>
             </div>
           ))}
 
           <div className="modal-total">
             <span>Total</span>
-            <span>{formatPrice(booking.totalPrice)}</span>
+            <span>{formatTotalPrice(booking.items)}</span>
           </div>
 
           <a

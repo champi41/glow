@@ -268,6 +268,7 @@
   color: inherit;
   opacity: 0.8;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .agenda-block__name {

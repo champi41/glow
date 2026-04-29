@@ -4,7 +4,14 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { formatPrice, getFirstName } from "../../../utils/format.js";
+import {
+  formatEntityPrice,
+  formatPrice,
+  formatPriceInfo,
+  getFirstName,
+  getTotalPriceInfo,
+  subtractDepositFromPriceInfo,
+} from "../../../utils/format.js";
 import { normalizeChileanPhone } from "../../../utils/phone.js";
 import "./StepClientForm.css";
 
@@ -40,8 +47,8 @@ export default function StepClientForm({
     });
   }, [initialClientData, reset]);
 
-  const totalPrice = selectedServices.reduce((s, sv) => s + sv.price, 0);
   const totalDuration = selectedServices.reduce((s, sv) => s + sv.duration, 0);
+  const totalPriceInfo = getTotalPriceInfo(selectedServices);
   // Calcular abonos por servicio y totales
   const depositPerService = {};
   let totalDeposit = 0;
@@ -54,9 +61,9 @@ export default function StepClientForm({
       });
     });
   }
-  const remainingAmount = showServiceDeposit
-    ? totalPrice - totalDeposit
-    : totalPrice;
+  const remainingInfo = showServiceDeposit
+    ? subtractDepositFromPriceInfo(totalPriceInfo, totalDeposit)
+    : totalPriceInfo;
 
   const formattedDate = selectedDate
     ? format(parseISO(selectedDate), "EEEE d 'de' MMMM", { locale: es })
@@ -86,7 +93,7 @@ export default function StepClientForm({
               </div>
               <div className="booking-summary__item-right">
                 <span className="booking-summary__item-price">
-                  {formatPrice(service.price)}
+                  {formatEntityPrice(service)}
                 </span>
                 {showServiceDeposit && depositPerService[service.id] > 0 && (
                   <span className="booking-summary__item-deposit">
@@ -114,14 +121,14 @@ export default function StepClientForm({
                 </div>
                 <div className="booking-summary__remaining">
                   <span>A pagar después</span>
-                  <span>{formatPrice(remainingAmount)}</span>
+                  <span>{formatPriceInfo(remainingInfo)}</span>
                 </div>
               </>
             )}
             <div className="booking-summary__grand-total">
               <span>Total</span>
               <span className="booking-summary__total-price">
-                {formatPrice(totalPrice)}
+                {formatPriceInfo(totalPriceInfo)}
               </span>
             </div>
           </div>

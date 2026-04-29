@@ -8,7 +8,12 @@ import { useTenantById } from "../../hooks/useTenant.js";
 import { useBookingsByDate } from "../../hooks/useBookingsByDate.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatPrice, getFirstName } from "../../utils/format.js";
+import {
+  formatEntityPrice,
+  formatPrice,
+  formatTotalPrice,
+  getFirstName,
+} from "../../utils/format.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import {
   Phone,
@@ -46,21 +51,51 @@ const FILTER_LABEL = {
   cancelled: "Canceladas",
 };
 
+function getBookingStartTimeForProfessional(booking, professionalId) {
+  const items = Array.isArray(booking?.items) ? booking.items : [];
+  const relevant = professionalId
+    ? items.filter((i) => i?.professionalId === professionalId)
+    : [];
+  const list = relevant.length ? relevant : items;
+  const times = list
+    .map((i) => i?.startTime)
+    .filter((t) => typeof t === "string" && t.length > 0)
+    .sort();
+  return times[0] || "";
+}
+
 // ─── Componente de reserva ────────────────────────────────────
 function BookingCard({
   booking,
   professionals,
+  professionalId,
   onUpdateStatus,
   onMarkDepositVerified,
   tenantSlug,
 }) {
   const [expanded, setExpanded] = useState(false);
 
-  const firstItem = booking.items?.[0];
-  const profName = firstItem
-    ? professionals.find((p) => p.id === firstItem.professionalId)?.name ||
-      firstItem.professionalName
-    : "—";
+  const items = Array.isArray(booking?.items) ? booking.items : [];
+  const profItems = professionalId
+    ? items.filter((i) => i?.professionalId === professionalId)
+    : [];
+  const displayItems = profItems.length ? profItems : items;
+  const displayStartTime = getBookingStartTimeForProfessional(
+    booking,
+    professionalId,
+  );
+
+  const profFromItems = displayItems?.[0]
+    ? professionals.find((p) => p.id === displayItems[0].professionalId)
+    : null;
+  const profName =
+    professionals.find((p) => p.id === professionalId)?.name ||
+    profFromItems?.name ||
+    displayItems?.[0]?.professionalName ||
+    "—";
+
+  const servicesLabel = displayItems.map((i) => i?.serviceName).filter(Boolean);
+  const extraCount = Math.max(0, displayItems.length - 1);
 
   return (
     <div className={`booking-card booking-card--${booking.status}`}>
@@ -73,16 +108,16 @@ function BookingCard({
       >
         <div className="booking-card__left">
           <div className="booking-card__time">
-            {firstItem?.startTime || "—"}
+            {displayStartTime || "—"}
           </div>
           <div className="booking-card__info">
             <span className="booking-card__client">{booking.clientName}</span>
             <span className="booking-card__meta">
-              {booking.items?.map((i) => i.serviceName).join(", ")}
+              {servicesLabel.join(", ")}
             </span>
             <span className="booking-card__prof">
               con {getFirstName(profName)}
-              {booking.items?.length > 1 && ` +${booking.items.length - 1}`}
+              {extraCount > 0 && ` +${extraCount}`}
             </span>
           </div>
         </div>
@@ -98,9 +133,7 @@ function BookingCard({
               </span>
             )}
           </div>
-          <span className="booking-card__price">
-            {formatPrice(booking.totalPrice)}
-          </span>
+          <span className="booking-card__price">{formatTotalPrice(booking.items)}</span>
           {expanded ? (
             <ChevronUp size={16} className="booking-card__chevron" />
           ) : (
@@ -128,7 +161,7 @@ function BookingCard({
                   </span>
                 </div>
                 <span className="booking-detail__item-price">
-                  {formatPrice(item.price)}
+                  {formatEntityPrice(item)}
                 </span>
               </div>
             ))}
@@ -312,21 +345,35 @@ export default function BookingsPage() {
   );
   const { data: professionals = [] } = useProfessionals(tenantId);
 
+  // Reservas en las que participa el profesional actual
+  const bookingsForProfessional = useMemo(() => {
+    const list = Array.isArray(bookings) ? bookings : [];
+    if (!professionalId) return list;
+    return list.filter((b) =>
+      b.items?.some((item) => item.professionalId === professionalId),
+    );
+  }, [bookings, professionalId]);
+
   // Filtrar por estado
   const filtered = useMemo(() => {
-    const sorted = [...bookings]
-      .filter((b) =>
-        b.items?.some((item) => item.professionalId === professionalId),
-      )
-      .sort((a, b) => {
-        const aTime = a.items?.[0]?.startTime || "";
-        const bTime = b.items?.[0]?.startTime || "";
-        return aTime.localeCompare(bTime);
-      });
+    const sorted = [...bookingsForProfessional].sort((a, b) => {
+      const aTime = getBookingStartTimeForProfessional(a, professionalId);
+      const bTime = getBookingStartTimeForProfessional(b, professionalId);
+      return aTime.localeCompare(bTime);
+    });
 
     if (activeFilter === "todas") return sorted;
     return sorted.filter((b) => b.status === activeFilter);
-  }, [bookings, activeFilter, professionalId]);
+  }, [bookingsForProfessional, activeFilter, professionalId]);
+
+  const countsByStatus = useMemo(() => {
+    const counts = {};
+    for (const s of FILTERS) {
+      if (s === "todas") continue;
+      counts[s] = bookingsForProfessional.filter((b) => b.status === s).length;
+    }
+    return counts;
+  }, [bookingsForProfessional]);
 
   // Actualizar estado de una reserva
   async function handleUpdateStatus(bookingId, newStatus) {
@@ -397,7 +444,7 @@ export default function BookingsPage() {
               {FILTER_LABEL[f]}
               {f !== "todas" && (
                 <span className="filter-chip__count">
-                  {bookings.filter((b) => b.status === f).length}
+                  {countsByStatus[f] ?? 0}
                 </span>
               )}
             </button>
@@ -426,6 +473,7 @@ export default function BookingsPage() {
                 key={booking.id}
                 booking={booking}
                 professionals={professionals}
+                professionalId={professionalId}
                 onUpdateStatus={handleUpdateStatus}
                 onMarkDepositVerified={handleMarkDepositVerified}
                 tenantSlug={tenantSlug}

@@ -8,7 +8,12 @@ import { es } from "date-fns/locale";
 import { db } from "../../config/firebase.js";
 import { useTenant } from "../../hooks/useTenant.js";
 import { useApplyTheme } from "../../hooks/useApplyTheme.js";
-import { formatPrice, getFirstName } from "../../utils/format.js";
+import {
+  formatEntityPrice,
+  formatPrice,
+  formatTotalPrice,
+  getFirstName,
+} from "../../utils/format.js";
 import { generateICS } from "../../utils/ics.js";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -379,7 +384,7 @@ export default function BookingStatusPage() {
                 </span>
               </div>
               <span className="booking-status__item-price">
-                {formatPrice(item.price)}
+                {formatEntityPrice(item)}
               </span>
             </div>
           ))}
@@ -391,7 +396,7 @@ export default function BookingStatusPage() {
               </span>
             </div>
             <span className="booking-status__total-price">
-              {formatPrice(booking.totalPrice)}
+              {formatTotalPrice(booking.items)}
             </span>
           </div>
         </section>

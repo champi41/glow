@@ -8,7 +8,7 @@ import { useApplyTheme } from "../../hooks/useApplyTheme.js";
 import { useProfessional } from "../../hooks/useProfessional.js";
 import { useServices } from "../../hooks/useServices.js";
 import { useApprovedReviewsByProf } from "../../hooks/useReviews.js";
-import { formatPrice } from "../../utils/format.js";
+import { formatTotalPrice } from "../../utils/format.js";
 import Spinner from "../../components/ui/Spinner.jsx";
 import ProfessionalHero from "../../components/public/ProfessionalHero.jsx";
 import SelectableServiceCard from "../../components/public/SelectableServiceCard.jsx";
@@ -115,10 +115,6 @@ export default function ProfessionalPage() {
 
   const selectedServices = profServices.filter((s) =>
     selectedServiceIds.has(s.id),
-  );
-  const totalPrice = selectedServices.reduce(
-    (sum, s) => sum + (s.price ?? 0),
-    0,
   );
   const totalDuration = selectedServices.reduce(
     (sum, s) => sum + (s.duration ?? 0),
@@ -330,7 +326,7 @@ export default function ProfessionalPage() {
               {selectedServiceIds.size > 1 ? "s" : ""}
             </span>
             <span className="booking-sticky__total">
-              {formatPrice(totalPrice)} · {totalDuration} min
+              {formatTotalPrice(selectedServices)} · {totalDuration} min
             </span>
           </div>
           <button

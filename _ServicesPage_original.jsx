@@ -1,4 +1,4 @@
-// src/pages/admin/ServicesPage.jsx
+﻿// src/pages/admin/ServicesPage.jsx
 
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -15,29 +15,25 @@ import { useTenantById } from "../../hooks/useTenant.js";
 import { useServices } from "../../hooks/useServices.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
 import { useQueryClient } from "@tanstack/react-query";
-import { formatEntityPrice, normalizePriceType } from "../../utils/format.js";
+import { formatPrice } from "../../utils/format.js";
 import { Plus, ToggleLeft, ToggleRight, X, Check, Trash2 } from "lucide-react";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./ServicesPage.css";
 
-// ─── Estado vacío para el formulario ─────────────────────────
+// ÔöÇÔöÇÔöÇ Estado vac├¡o para el formulario ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const EMPTY_FORM = {
   name: "",
   description: "",
   category: "",
   newCategory: "",
-  priceType: "fixed",
   price: "",
-  priceMin: "",
-  priceMax: "",
-  priceText: "",
   duration: "",
   depositAmount: 0,
   professionalIds: [],
   isActive: true,
 };
 
-// ─── Modal de crear / editar servicio ────────────────────────
+// ÔöÇÔöÇÔöÇ Modal de crear / editar servicio ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function ServiceModal({
   service,
   tenant,
@@ -54,17 +50,12 @@ function ServiceModal({
 
   const [form, setForm] = useState(() => {
     if (isEditing) {
-      const priceType = normalizePriceType(service.priceType);
       return {
         name: service.name || "",
         description: service.description || "",
         category: service.category || "",
         newCategory: "",
-        priceType,
         price: String(service.price ?? ""),
-        priceMin: String(service.priceMin ?? ""),
-        priceMax: String(service.priceMax ?? ""),
-        priceText: String(service.priceText ?? ""),
         duration: String(service.duration ?? ""),
         depositAmount: Number(service.depositAmount) || 0,
         professionalIds: service.professionalIds || [],
@@ -82,60 +73,6 @@ function ServiceModal({
     setErrors((e) => ({ ...e, [field]: null }));
   }
 
-  function setPriceType(nextTypeRaw) {
-    const nextType = normalizePriceType(nextTypeRaw);
-    setForm((f) => {
-      const base = {
-        ...f,
-        priceType: nextType,
-      };
-
-      if (nextType === "fixed") {
-        return {
-          ...base,
-          priceMin: "",
-          priceMax: "",
-          priceText: "",
-        };
-      }
-
-      if (nextType === "range") {
-        return {
-          ...base,
-          price: "",
-          priceText: "",
-        };
-      }
-
-      if (nextType === "tbd") {
-        return {
-          ...base,
-          price: "",
-          priceMin: "",
-          priceMax: "",
-        };
-      }
-
-      // free
-      return {
-        ...base,
-        price: "",
-        priceMin: "",
-        priceMax: "",
-        priceText: "",
-        depositAmount: 0,
-      };
-    });
-
-    setErrors((e) => ({
-      ...e,
-      price: null,
-      priceMin: null,
-      priceMax: null,
-      priceText: null,
-    }));
-  }
-
   function toggleProf(profId) {
     setForm((f) => ({
       ...f,
@@ -148,32 +85,14 @@ function ServiceModal({
   function validate() {
     const errs = {};
     if (!form.name.trim()) errs.name = "El nombre es obligatorio";
-
-    const pt = normalizePriceType(form.priceType);
-    if (pt === "fixed") {
-      if (form.price === "" || isNaN(Number(form.price))) {
-        errs.price = "Precio inválido";
-      }
-    } else if (pt === "range") {
-      if (form.priceMin === "" || isNaN(Number(form.priceMin))) {
-        errs.priceMin = "Mínimo inválido";
-      }
-      if (form.priceMax === "" || isNaN(Number(form.priceMax))) {
-        errs.priceMax = "Máximo inválido";
-      }
-      const min = Number(form.priceMin);
-      const max = Number(form.priceMax);
-      if (!isNaN(min) && !isNaN(max) && min > max) {
-        errs.priceMax = "El máximo debe ser ≥ al mínimo";
-      }
-    }
-
+    if (!form.price || isNaN(Number(form.price)))
+      errs.price = "Precio inv├ílido";
     if (!form.duration || isNaN(Number(form.duration)))
-      errs.duration = "Duración inválida";
+      errs.duration = "Duraci├│n inv├ílida";
     if (form.professionalIds.length === 0)
       errs.profs = "Selecciona al menos un profesional";
     const cat = form.newCategory.trim() || form.category;
-    if (!cat) errs.category = "Selecciona o crea una categoría";
+    if (!cat) errs.category = "Selecciona o crea una categor├¡a";
     return errs;
   }
 
@@ -187,37 +106,15 @@ function ServiceModal({
     setSaving(true);
     const category = form.newCategory.trim() || form.category;
 
-    const pt = normalizePriceType(form.priceType);
-    const pricePayload =
-      pt === "fixed"
-        ? { priceType: "fixed", price: Number(form.price) }
-        : pt === "range"
-          ? {
-              priceType: "range",
-              price: Number(form.priceMin) || 0,
-              priceMin: Number(form.priceMin) || 0,
-              priceMax: Number(form.priceMax) || 0,
-            }
-          : pt === "tbd"
-            ? {
-                priceType: "tbd",
-                price: 0,
-                ...(form.priceText.trim() ? { priceText: form.priceText.trim() } : {}),
-              }
-            : { priceType: "free", price: 0 };
-
     await onSave({
       ...(isEditing ? { id: service.id } : {}),
       name: form.name.trim(),
       description: form.description.trim(),
       category,
-      ...pricePayload,
+      price: Number(form.price),
       duration: Number(form.duration),
       ...(showDepositAmount
-        ? {
-            depositAmount:
-              pt === "free" ? 0 : Number(form.depositAmount) || 0,
-          }
+        ? { depositAmount: Number(form.depositAmount) || 0 }
         : {}),
       professionalIds: form.professionalIds,
       isActive: form.isActive,
@@ -230,7 +127,7 @@ function ServiceModal({
     if (!isEditing || !service?.id) return;
 
     const confirmed = window.confirm(
-      `¿Eliminar "${service.name}"?\nEsta acción no se puede deshacer.`,
+      `┬┐Eliminar "${service.name}"?\nEsta acci├│n no se puede deshacer.`,
     );
     if (!confirmed) return;
 
@@ -242,7 +139,7 @@ function ServiceModal({
     }
   }
 
-  // Categorías disponibles: existentes + nueva si se escribe
+  // Categor├¡as disponibles: existentes + nueva si se escribe
   const categoryOptions = useMemo(() => {
     const set = new Set(existingCategories);
     return [...set];
@@ -269,17 +166,17 @@ function ServiceModal({
             <label>Nombre *</label>
             <input
               type="text"
-              placeholder="Ej: Corte clásico"
+              placeholder="Ej: Corte cl├ísico"
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
             />
             {errors.name && <span className="form-error">{errors.name}</span>}
           </div>
 
-          {/* Descripción */}
+          {/* Descripci├│n */}
           <div className="form-field">
             <label>
-              Descripción <span className="form-optional">(opcional)</span>
+              Descripci├│n <span className="form-optional">(opcional)</span>
             </label>
             <textarea
               placeholder="Describe brevemente el servicio..."
@@ -289,22 +186,23 @@ function ServiceModal({
             />
           </div>
 
-          {/* Precio y duración */}
+          {/* Precio y duraci├│n */}
           <div className="form-row">
             <div className="form-field">
-              <label>Tipo de precio *</label>
-              <select
-                value={form.priceType}
-                onChange={(e) => setPriceType(e.target.value)}
-              >
-                <option value="fixed">Precio fijo</option>
-                <option value="range">Rango</option>
-                <option value="free">Gratis</option>
-                <option value="tbd">Precio a definir en presencial</option>
-              </select>
+              <label>Precio (CLP) *</label>
+              <input
+                type="number"
+                placeholder="12000"
+                value={form.price}
+                onChange={(e) => set("price", e.target.value)}
+                min={0}
+              />
+              {errors.price && (
+                <span className="form-error">{errors.price}</span>
+              )}
             </div>
             <div className="form-field">
-              <label>Duración (min) *</label>
+              <label>Duraci├│n (min) *</label>
               <input
                 type="number"
                 placeholder="30"
@@ -319,68 +217,7 @@ function ServiceModal({
             </div>
           </div>
 
-          {normalizePriceType(form.priceType) === "fixed" && (
-            <div className="form-field">
-              <label>Precio (CLP) *</label>
-              <input
-                type="number"
-                placeholder="12000"
-                value={form.price}
-                onChange={(e) => set("price", e.target.value)}
-                min={0}
-              />
-              {errors.price && (
-                <span className="form-error">{errors.price}</span>
-              )}
-            </div>
-          )}
-
-          {normalizePriceType(form.priceType) === "range" && (
-            <div className="form-row">
-              <div className="form-field">
-                <label>Precio mínimo (CLP) *</label>
-                <input
-                  type="number"
-                  placeholder="10000"
-                  value={form.priceMin}
-                  onChange={(e) => set("priceMin", e.target.value)}
-                  min={0}
-                />
-                {errors.priceMin && (
-                  <span className="form-error">{errors.priceMin}</span>
-                )}
-              </div>
-              <div className="form-field">
-                <label>Precio máximo (CLP) *</label>
-                <input
-                  type="number"
-                  placeholder="20000"
-                  value={form.priceMax}
-                  onChange={(e) => set("priceMax", e.target.value)}
-                  min={0}
-                />
-                {errors.priceMax && (
-                  <span className="form-error">{errors.priceMax}</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {normalizePriceType(form.priceType) === "tbd" && (
-            <div className="form-field">
-              <label>
-                Texto de precio <span className="form-optional">(opcional)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Precio a definir en presencial"
-                value={form.priceText}
-                onChange={(e) => set("priceText", e.target.value)}
-              />
-            </div>
-          )}
-
-          {showDepositAmount && normalizePriceType(form.priceType) !== "free" && (
+          {showDepositAmount && (
             <div className="form-field">
               <label>
                 Abono requerido (CLP){" "}
@@ -402,9 +239,9 @@ function ServiceModal({
             </div>
           )}
 
-          {/* Categoría */}
+          {/* Categor├¡a */}
           <div className="form-field">
-            <label>Categoría *</label>
+            <label>Categor├¡a *</label>
             {categoryOptions.length > 0 && (
               <div className="category-chips">
                 {categoryOptions.map((cat) => (
@@ -429,7 +266,7 @@ function ServiceModal({
             )}
             <input
               type="text"
-              placeholder="O escribe una categoría nueva..."
+              placeholder="O escribe una categor├¡a nueva..."
               value={form.newCategory}
               onChange={(e) => {
                 set("newCategory", e.target.value);
@@ -515,7 +352,7 @@ function ServiceModal({
   );
 }
 
-// ─── Card de servicio ─────────────────────────────────────────
+// ÔöÇÔöÇÔöÇ Card de servicio ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function ServiceCard({ service, professionals, onEdit, onToggle }) {
   const profNames = service.professionalIds
     ?.map((id) => professionals.find((p) => p.id === id)?.name?.split(" ")[0])
@@ -539,7 +376,7 @@ function ServiceCard({ service, professionals, onEdit, onToggle }) {
         <div className="service-card__info">
           <span className="service-card__name">{service.name}</span>
           <span className="service-card__meta">
-            {service.duration} min · {formatEntityPrice(service)}
+            {service.duration} min ┬À {formatPrice(service.price)}
           </span>
           {profNames && (
             <span className="service-card__profs">{profNames}</span>
@@ -569,7 +406,7 @@ function ServiceCard({ service, professionals, onEdit, onToggle }) {
   );
 }
 
-// ─── Página principal ─────────────────────────────────────────
+// ÔöÇÔöÇÔöÇ P├ígina principal ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 export default function ServicesPage({ embedded = false }) {
   const { tenantId } = useAuth();
   const queryClient = useQueryClient();
@@ -592,17 +429,17 @@ export default function ServicesPage({ embedded = false }) {
     };
   }, [modalOpen]);
 
-  // Categorías existentes derivadas de los servicios
+  // Categor├¡as existentes derivadas de los servicios
   const existingCategories = useMemo(() => {
     const cats = services.map((s) => s.category).filter(Boolean);
     return [...new Set(cats)];
   }, [services]);
 
-  // Agrupar por categoría
+  // Agrupar por categor├¡a
   const grouped = useMemo(() => {
     const map = new Map();
     for (const s of services) {
-      const cat = s.category || "Sin categoría";
+      const cat = s.category || "Sin categor├¡a";
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat).push(s);
     }
@@ -670,10 +507,10 @@ export default function ServicesPage({ embedded = false }) {
           <Plus size={16} /> Nuevo servicio
         </button>
 
-        {/* Lista agrupada por categoría */}
+        {/* Lista agrupada por categor├¡a */}
         {grouped.size === 0 ? (
           <div className="services-empty">
-            <p>Aún no tienes servicios. Crea el primero.</p>
+            <p>A├║n no tienes servicios. Crea el primero.</p>
           </div>
         ) : (
           [...grouped.entries()].map(([cat, items]) => (

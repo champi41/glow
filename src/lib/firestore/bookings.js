@@ -29,6 +29,11 @@ function getDepositFields(tenantDeposit, bookingData) {
   };
   if (!tenantDeposit?.enabled) return defaultFields;
 
+  const items = Array.isArray(bookingData?.items) ? bookingData.items : [];
+  const allItemsFree =
+    items.length > 0 && items.every((i) => i?.priceType === "free");
+  if (allItemsFree) return defaultFields;
+
   let amount = 0;
   if (
     tenantDeposit.type === "fixed" &&
@@ -37,12 +42,12 @@ function getDepositFields(tenantDeposit, bookingData) {
     amount = tenantDeposit.amount;
   } else if (
     tenantDeposit.type === "per_service" &&
-    Array.isArray(bookingData.items)
+    items.length > 0
   ) {
-    amount = bookingData.items.reduce(
-      (s, i) => s + (Number(i.depositAmount) || 0),
-      0,
-    );
+    amount = items.reduce((s, i) => {
+      if (i?.priceType === "free") return s;
+      return s + (Number(i.depositAmount) || 0);
+    }, 0);
   }
 
   return {
