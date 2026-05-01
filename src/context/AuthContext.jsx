@@ -76,6 +76,7 @@ export function AuthProvider({ children }) {
   // ── Helpers de rol ──────────────────────────────────────────
   const isOwner = profile?.role === "owner";
   const isManager = profile?.role === "manager";
+  const isSuperAdmin = profile?.role === "superadmin";
   const canManage = isOwner || isManager; // acceso a servicios y horario
 
   const value = {
@@ -86,6 +87,7 @@ export function AuthProvider({ children }) {
     role: profile?.role || null,
     isOwner,
     isManager,
+    isSuperAdmin,
     canManage,
     loadingAuth,
     errorAuth,

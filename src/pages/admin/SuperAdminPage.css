@@ -1,0 +1,135 @@
+.super-admin-page {
+  padding: 20px 15px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.super-admin-page__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.super-admin-page__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.super-admin-page__logout {
+  white-space: nowrap;
+}
+
+.super-admin-page__title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.super-admin-page__subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.super-card {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 12px;
+}
+
+.super-card__title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.super-card__subtitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.super-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.super-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 720px) {
+  .super-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.super-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.super-field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.super-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.super-field input[type="text"],
+.super-field input[type="number"],
+.super-field textarea,
+.super-field select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.super-field textarea {
+  resize: vertical;
+}
+
+.super-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.super-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 4px;
+}
+
+.super-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.super-ok {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-accent);
+}

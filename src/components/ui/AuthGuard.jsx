@@ -3,8 +3,12 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-export default function AuthGuard({ children, requireManage = false }) {
-  const { user, profile, loadingAuth, canManage } = useAuth();
+export default function AuthGuard({
+  children,
+  requireManage = false,
+  requireSuperAdmin = false,
+}) {
+  const { user, profile, loadingAuth, canManage, isSuperAdmin } = useAuth();
   const location = useLocation();
 
   // ← Clave: mientras carga no hacer NADA, ni redirigir ni renderizar
@@ -15,6 +19,10 @@ export default function AuthGuard({ children, requireManage = false }) {
   }
 
   if (requireManage && !canManage) {
+    return <Navigate to="/admin/reservas" replace />;
+  }
+
+  if (requireSuperAdmin && !isSuperAdmin) {
     return <Navigate to="/admin/reservas" replace />;
   }
 

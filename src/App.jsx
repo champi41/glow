@@ -21,6 +21,7 @@ import ServicesPage from "./pages/admin/ServicesPage.jsx";
 import ProfilePage from "./pages/admin/ProfilePage.jsx";
 import BusinessProfilePage from "./pages/admin/BusinessProfilePage.jsx";
 import ReviewsPage from "./pages/admin/ReviewsPage.jsx";
+import SuperAdminPage from "./pages/admin/SuperAdminPage.jsx";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -134,6 +135,15 @@ export default function App() {
           element={
             <AuthGuard>
               <ProfilePage />
+            </AuthGuard>
+          }
+        />
+
+        <Route
+          path="/superadmin"
+          element={
+            <AuthGuard requireSuperAdmin>
+              <SuperAdminPage />
             </AuthGuard>
           }
         />

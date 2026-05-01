@@ -2,29 +2,54 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users: solo el propio usuario puede leer su doc
-    match /users/{uid} {
-      allow read, write: if request.auth.uid == uid;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Tenants: lectura pública, escritura solo autenticados del tenant
+    function myUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function myUserDoc() {
+      return get(myUserPath()).data;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && exists(myUserPath()) && myUserDoc().role == 'superadmin';
+    }
+
+    function isTenantMember(tenantId) {
+      return isSignedIn() && exists(myUserPath()) && myUserDoc().tenantId == tenantId;
+    }
+
+    function canManageTenant(tenantId) {
+      return isSuperAdmin() || isTenantMember(tenantId);
+    }
+
+    // Users
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isSuperAdmin());
+      // Solo superadmin puede crear/editar perfiles (evita auto-escalado de rol/tenantId)
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // Tenants
     match /tenants/{tenantId} {
       allow read: if true;
-      allow write: if request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
 
-      // Professionals: lectura pública
+      // Superadmin o miembros del tenant pueden administrar el doc.
+      allow create, update, delete: if canManageTenant(tenantId);
+
+      // Professionals
       match /professionals/{profId} {
         allow read: if true;
-        allow write: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+        allow create, update, delete: if canManageTenant(tenantId);
       }
 
-      // Services: lectura pública
+      // Services
       match /services/{serviceId} {
         allow read: if true;
-        allow write: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+        allow create, update, delete: if canManageTenant(tenantId);
       }
 
       // Bookings: lectura y creación públicas; update/delete solo admin, salvo acciones del cliente sin login
@@ -32,8 +57,7 @@ service cloud.firestore {
         allow read: if true;
         allow create: if true;
         // Admin del tenant puede hacer cualquier update/delete
-        allow update, delete: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId
+        allow update, delete: if canManageTenant(tenantId)
         // Cliente sin login: solo subir comprobante de abono
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['depositStatus', 'depositProofUrl'])
             && request.resource.data.depositStatus == 'uploaded'
@@ -45,18 +69,17 @@ service cloud.firestore {
           && request.resource.data.cancelledBy == 'client'
           && resource.data.status in ['pending', 'confirmed']);
       }
-			match /blocks/{blockId} {
-  			allow read: if true;        // ← agregar lectura pública
-  			allow write: if request.auth != null
-    			&& 
-      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
-			}
-      // Reseñas: cualquiera puede leer (comprobar si ya hay reseña) y crear (enviar reseña)
-      // Solo usuarios del tenant pueden actualizar/eliminar (admin aprueba/rechaza)
 
+      // Blocks
+      match /blocks/{blockId} {
+        allow read: if true;
+        allow create, update, delete: if canManageTenant(tenantId);
+      }
+
+      // Reviews
+      match /reviews/{reviewId} {
         allow read, create: if true;
-        allow update, delete: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
+        allow update, delete: if canManageTenant(tenantId);
       }
     }
   }
