@@ -18,11 +18,7 @@
 .prof-hero__cover-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 75%,
-    var(--color-bg) 100%
-  );
+  background: linear-gradient(to bottom, transparent 75%, var(--color-bg) 100%);
 }
 
 @keyframes profHeroZoom {
@@ -91,25 +87,53 @@
 
 .prof-hero__info {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px 20px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
-.prof-hero__info-item {
+.prof-hero__info::-webkit-scrollbar {
+  display: none;
+}
+
+.prof-hero__pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
-  font-weight: 300;
-  color: var(--color-text-tertiary);
-}
-
-.prof-hero__info-item--link {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: var(--font-body);
+  color: var(--color-text-secondary);
   text-decoration: none;
-  color: var(--color-text-tertiary);
-  transition: color 0.15s ease;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
-.prof-hero__info-item--link:hover {
+.prof-hero__pill:hover {
+  border-color: var(--color-accent);
   color: var(--color-accent);
+}
+
+.prof-hero__pill-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+@media (min-width: 480px) {
+  .prof-hero__pill-text {
+    max-width: 220px;
+  }
 }

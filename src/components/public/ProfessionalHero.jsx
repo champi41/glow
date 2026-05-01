@@ -17,13 +17,37 @@ function getRoleLabel(role) {
   return role || "Profesional";
 }
 
+function normalizeInstagramHref(value) {
+  if (!value || typeof value !== "string") return null;
+  const raw = value.trim();
+  if (!raw) return null;
+
+  // URL completa
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  // "www.instagram.com/usuario" → agregar esquema
+  if (/^www\./i.test(raw)) return `https://${raw}`;
+
+  // "@usuario" o "instagram.com/usuario" o "www.instagram.com/usuario"
+  const username = raw
+    .replace(/^@/, "")
+    .replace(/^instagram\.com\//i, "")
+    .replace(/^www\.instagram\.com\//i, "")
+    .replace(/\//g, "");
+
+  if (!username) return null;
+  return `https://www.instagram.com/${username}/`;
+}
+
 export default function ProfessionalHero({
   professional,
   tenantSlug,
   tenantName,
 }) {
   const navigate = useNavigate();
-  const { name, bio, photoUrl, role, instagram } = professional ?? {};
+  const { name, bio, photoUrl, role, instagram, instagramUrl } =
+    professional ?? {};
+  const instagramHref = normalizeInstagramHref(instagramUrl || instagram);
   const hasCover = !!photoUrl;
   const { first, rest } = getTitleParts(name);
 
@@ -56,14 +80,15 @@ export default function ProfessionalHero({
         {bio && <p className="prof-hero__bio">{bio}</p>}
 
         <div className="prof-hero__info">
-          {instagram && (
+          {instagramHref && (
             <a
-              href={instagram}
+              href={instagramHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="prof-hero__info-item prof-hero__info-item--link"
+              className="prof-hero__pill"
             >
-              <Instagram size={12} aria-hidden="true" /> Instagram
+              <Instagram size={13} aria-hidden="true" />
+              <span className="prof-hero__pill-text">Instagram</span>
             </a>
           )}
         </div>
