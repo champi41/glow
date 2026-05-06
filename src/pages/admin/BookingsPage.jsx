@@ -1,19 +1,34 @@
 import { useState, useMemo } from "react";
 import { format, parseISO, startOfToday } from "date-fns";
 import { es } from "date-fns/locale";
-import { doc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  Timestamp,
+  setDoc,
+  increment,
+  arrayUnion,
+} from "firebase/firestore";
 import { db } from "../../config/firebase.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenantById } from "../../hooks/useTenant.js";
 import { useBookingsByDate } from "../../hooks/useBookingsByDate.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
+import { useServices } from "../../hooks/useServices.js";
+import { useBlocksByDate } from "../../hooks/useBlocksByDate.js";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   formatEntityPrice,
   formatPrice,
   formatTotalPrice,
   getFirstName,
+  getTotalPriceInfo,
+  normalizePriceType,
+  getEntityPriceInfo,
 } from "../../utils/format.js";
+import { calcAvailableSlots } from "../../utils/slots.js";
+import { normalizeChileanPhone } from "../../utils/phone.js";
+import { createBooking } from "../../lib/firestore/bookings.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import {
   Phone,
@@ -97,6 +112,11 @@ function BookingCard({
   const servicesLabel = displayItems.map((i) => i?.serviceName).filter(Boolean);
   const extraCount = Math.max(0, displayItems.length - 1);
 
+  const myCompleted =
+    professionalId &&
+    Array.isArray(booking.professionalsCompleted) &&
+    booking.professionalsCompleted.includes(professionalId);
+
   return (
     <div className={`booking-card booking-card--${booking.status}`}>
       {/* Fila principal */}
@@ -107,9 +127,7 @@ function BookingCard({
         aria-expanded={expanded}
       >
         <div className="booking-card__left">
-          <div className="booking-card__time">
-            {displayStartTime || "—"}
-          </div>
+          <div className="booking-card__time">{displayStartTime || "—"}</div>
           <div className="booking-card__info">
             <span className="booking-card__client">{booking.clientName}</span>
             <span className="booking-card__meta">
@@ -127,13 +145,20 @@ function BookingCard({
             <span className={`badge ${STATUS_CLASS[booking.status]}`}>
               {STATUS_LABEL[booking.status]}
             </span>
+            {myCompleted && (
+              <span className="badge badge--info booking-card__my-completed">
+                Tu parte completada
+              </span>
+            )}
             {booking.depositStatus === "uploaded" && (
               <span className="badge badge--warning booking-card__deposit-badge">
                 📎 Comprobante
               </span>
             )}
           </div>
-          <span className="booking-card__price">{formatTotalPrice(booking.items)}</span>
+          <span className="booking-card__price">
+            {formatTotalPrice(booking.items)}
+          </span>
           {expanded ? (
             <ChevronUp size={16} className="booking-card__chevron" />
           ) : (
@@ -277,15 +302,21 @@ function BookingCard({
               )}
               {booking.status === "confirmed" && (
                 <>
-                  <button
-                    className="action-btn action-btn--complete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onUpdateStatus(booking.id, "completed");
-                    }}
-                  >
-                    <CheckCircle2 size={15} /> Marcar completada
-                  </button>
+                  {!myCompleted ? (
+                    <button
+                      className="action-btn action-btn--complete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdateStatus(booking.id, "completed");
+                      }}
+                    >
+                      <CheckCircle2 size={15} /> Marcar completada
+                    </button>
+                  ) : (
+                    <button className="action-btn" disabled>
+                      <CheckCircle2 size={15} /> Tu parte completada
+                    </button>
+                  )}
                   <button
                     className="action-btn action-btn--cancel"
                     onClick={(e) => {
@@ -344,6 +375,38 @@ export default function BookingsPage() {
     selectedDate,
   );
   const { data: professionals = [] } = useProfessionals(tenantId);
+  const { data: services = [] } = useServices(tenantId);
+
+  // Estado para crear reserva desde el panel (modal)
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createClientName, setCreateClientName] = useState("");
+  const [createClientPhone, setCreateClientPhone] = useState("");
+  const [createClientEmail, setCreateClientEmail] = useState("");
+  const [createSelectedServiceIds, setCreateSelectedServiceIds] = useState(
+    new Set(),
+  );
+  const [createDate, setCreateDate] = useState(selectedDate);
+  const { data: bookingsForCreateDate = [] } = useBookingsByDate(
+    tenantId,
+    createDate,
+  );
+  const { data: blocksForCreateDate = [] } = useBlocksByDate(
+    tenantId,
+    createDate,
+  );
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(null);
+  const [isSearchingSlots, setIsSearchingSlots] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState(null);
+
+  // Estado para completar reserva (modal de cobro)
+  const [completeModalOpen, setCompleteModalOpen] = useState(false);
+  const [completeBooking, setCompleteBooking] = useState(null);
+  const [completeServiceAmounts, setCompleteServiceAmounts] = useState({});
+  const [completeServiceMethods, setCompleteServiceMethods] = useState({});
+  const [completeError, setCompleteError] = useState(null);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Reservas en las que participa el profesional actual
   const bookingsForProfessional = useMemo(() => {
@@ -378,6 +441,51 @@ export default function BookingsPage() {
   // Actualizar estado de una reserva
   async function handleUpdateStatus(bookingId, newStatus) {
     if (!tenantId) return;
+    // Si se marca como completada, abrir modal para ingresar cobros/metodo
+    if (newStatus === "completed") {
+      const booking = (bookings || []).find((b) => b.id === bookingId);
+      if (!booking) {
+        // fallback: actualizar sin modal
+        try {
+          await updateDoc(doc(db, "tenants", tenantId, "bookings", bookingId), {
+            status: newStatus,
+            completedAt: Timestamp.now(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["bookings-date", tenantId, selectedDate],
+          });
+        } catch (err) {
+          console.error("Error al actualizar reserva:", err);
+        }
+        return;
+      }
+
+      // Si el usuario es un profesional, verificar que la reserva incluya servicios suyos
+      const myItems = professionalId
+        ? (booking.items || []).filter(
+            (i) => i.professionalId === professionalId,
+          )
+        : booking.items || [];
+      if (professionalId && (!myItems || myItems.length === 0)) {
+        // nada que completar para este profesional
+        return;
+      }
+
+      // Evitar abrir modal si este profesional ya marcó su parte
+      if (
+        professionalId &&
+        Array.isArray(booking.professionalsCompleted) &&
+        booking.professionalsCompleted.includes(professionalId)
+      ) {
+        // ya completado por este profesional: no hacer nada
+        return;
+      }
+
+      // abrir modal con valores sugeridos (solo para los items del profesional)
+      openCompleteModal(booking);
+      return;
+    }
+
     try {
       const payload = {
         status: newStatus,
@@ -393,6 +501,30 @@ export default function BookingsPage() {
     } catch (err) {
       console.error("Error al actualizar reserva:", err);
     }
+  }
+
+  function openCompleteModal(booking) {
+    setCompleteBooking(booking);
+    const amounts = {};
+    const methods = {};
+    const itemsToInit = professionalId
+      ? (booking.items || []).filter((i) => i.professionalId === professionalId)
+      : booking.items || [];
+    for (const item of itemsToInit) {
+      const sid = item.serviceId || item.serviceId;
+      const info = getEntityPriceInfo(item);
+      let suggested = 0;
+      if (info.kind === "fixed") suggested = info.amount || 0;
+      else if (info.kind === "range") suggested = info.min || 0;
+      else if (info.kind === "tbd") suggested = 0;
+      else suggested = info.amount || 0;
+      amounts[sid] = suggested;
+      methods[sid] = "efectivo";
+    }
+    setCompleteServiceAmounts(amounts);
+    setCompleteServiceMethods(methods);
+    setCompleteError(null);
+    setCompleteModalOpen(true);
   }
 
   // Marcar abono verificado y confirmar reserva
@@ -415,20 +547,391 @@ export default function BookingsPage() {
     locale: es,
   });
 
+  // Abrir la página pública de reserva en una nueva pestaña, preseleccionando al profesional
+  function handleOpenBookingPageForClient() {
+    if (!tenantId || !professionalId) return;
+    // Inicializar estado del modal
+    setCreateDate(selectedDate);
+    setCreateClientName("");
+    setCreateClientPhone("");
+    setCreateClientEmail("");
+    setCreateSelectedServiceIds(new Set());
+    setAvailableSlots([]);
+    setSelectedSlotIndex(null);
+    setCreateError(null);
+    setCreateModalOpen(true);
+  }
+
+  function closeCreateModal() {
+    setCreateModalOpen(false);
+  }
+
+  function toggleCreateService(serviceId) {
+    setCreateSelectedServiceIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(serviceId)) next.delete(serviceId);
+      else next.add(serviceId);
+      return next;
+    });
+  }
+
+  async function handleSearchSlots() {
+    setCreateError(null);
+    setAvailableSlots([]);
+    setSelectedSlotIndex(null);
+
+    const ids = Array.from(createSelectedServiceIds);
+    if (!ids.length) {
+      setCreateError("Selecciona al menos un servicio");
+      return;
+    }
+
+    const selectedServices = services.filter((s) => ids.includes(s.id));
+    const assignments = {};
+    for (const s of selectedServices) assignments[s.id] = professionalId;
+
+    try {
+      setIsSearchingSlots(true);
+      const slots = calcAvailableSlots({
+        date: createDate,
+        tenant,
+        assignments,
+        selectedServices,
+        professionals,
+        existingBookings: bookingsForCreateDate,
+        existingBlocks: blocksForCreateDate,
+      });
+
+      setAvailableSlots(slots || []);
+      if (!(slots && slots.length)) {
+        setCreateError(
+          "No hay horarios disponibles para la selección indicada.",
+        );
+      }
+    } catch (err) {
+      console.error("Error al calcular slots:", err);
+      setCreateError("Error al buscar horarios. Intenta nuevamente.");
+    } finally {
+      setIsSearchingSlots(false);
+    }
+  }
+
+  function getDepositRequiredForBooking(tenantDeposit, items) {
+    if (!tenantDeposit?.enabled) return false;
+    const list = Array.isArray(items) ? items : [];
+    const allItemsFree =
+      list.length > 0 &&
+      list.every((i) => normalizePriceType(i?.priceType) === "free");
+    if (allItemsFree) return false;
+
+    if (tenantDeposit.type === "fixed") {
+      return (Number(tenantDeposit.amount) || 0) > 0;
+    }
+
+    if (tenantDeposit.type === "per_service") {
+      return (list || []).some(
+        (item) =>
+          normalizePriceType(item?.priceType) !== "free" &&
+          (Number(item.depositAmount) || 0) > 0,
+      );
+    }
+
+    return false;
+  }
+
+  async function handleSubmitCreateBooking() {
+    setCreateError(null);
+    if (!tenantId || !professionalId) return;
+    if (selectedSlotIndex == null) {
+      setCreateError("Selecciona un horario");
+      return;
+    }
+
+    const normalizedPhone =
+      normalizeChileanPhone(createClientPhone) ||
+      createClientPhone?.trim() ||
+      "";
+    const normalizedClientData = {
+      clientName: createClientName?.trim() || "",
+      clientPhone: normalizedPhone,
+      clientEmail: createClientEmail?.trim() || "",
+    };
+
+    const slot = availableSlots[selectedSlotIndex];
+    if (!slot) {
+      setCreateError("Horario inválido");
+      return;
+    }
+
+    // Construir items desde slot.order (igual que en BookingPage)
+    const items = slot.order.flatMap((group) =>
+      group.services.map((service) => {
+        const prof = professionals.find((p) => p.id === group.profId);
+        const priceType = normalizePriceType(service?.priceType);
+        const priceFields =
+          priceType === "range"
+            ? {
+                priceType,
+                price: Number(service.priceMin) || 0,
+                priceMin: Number(service.priceMin) || 0,
+                priceMax: Number(service.priceMax) || 0,
+              }
+            : priceType === "tbd"
+              ? {
+                  priceType,
+                  price: 0,
+                  priceText: (service.priceText || "").trim() || undefined,
+                }
+              : priceType === "free"
+                ? { priceType, price: 0 }
+                : { priceType: "fixed", price: Number(service.price) || 0 };
+
+        if (priceFields.priceText === undefined) delete priceFields.priceText;
+
+        return {
+          serviceId: service.id,
+          serviceName: service.name,
+          professionalId: group.profId,
+          professionalName: prof?.name || "",
+          professionalSlug: prof?.slug || "",
+          startTime: service.start || group.start,
+          endTime: service.end || group.end,
+          ...priceFields,
+          duration: service.duration,
+          depositAmount:
+            priceType === "free" ? 0 : Number(service.depositAmount) || 0,
+        };
+      }),
+    );
+
+    const totalPriceInfo = getTotalPriceInfo(items);
+    const totalPrice =
+      totalPriceInfo.kind === "fixed" ? totalPriceInfo.amount : null;
+
+    const depositRequired = getDepositRequiredForBooking(
+      tenant?.deposit,
+      items,
+    );
+    const autoConfirmed =
+      Boolean(tenant?.autoConfirmBookings) && !depositRequired;
+
+    const booking = {
+      clientName: normalizedClientData.clientName,
+      clientPhone: normalizedClientData.clientPhone,
+      clientEmail: normalizedClientData.clientEmail,
+      date: Timestamp.fromDate(parseISO(createDate)),
+      dateStr: createDate,
+      status: autoConfirmed ? "confirmed" : "pending",
+      createdAt: Timestamp.now(),
+      notes: "",
+      items,
+      totalPrice,
+      totalDuration: items.reduce((s, i) => s + i.duration, 0),
+    };
+
+    try {
+      setIsCreating(true);
+      const result = await createBooking(tenantId, booking, tenant?.deposit);
+      queryClient.invalidateQueries({
+        queryKey: ["bookings-date", tenantId, createDate],
+      });
+      setIsCreating(false);
+      setCreateModalOpen(false);
+      // Abrir página de estado de reserva en nueva pestaña
+      if (tenant?.slug) {
+        try {
+          window.open(`/${tenant.slug}/reserva/${result.id}`, "_blank");
+        } catch (e) {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.error("Error al crear reserva desde panel:", err);
+      setCreateError("Error al crear la reserva. Intenta nuevamente.");
+      setIsCreating(false);
+    }
+  }
+
+  function handleSetCompleteAmount(serviceId, value) {
+    setCompleteServiceAmounts((prev) => ({ ...prev, [serviceId]: value }));
+  }
+
+  function handleSetCompleteMethod(serviceId, method) {
+    setCompleteServiceMethods((prev) => ({ ...prev, [serviceId]: method }));
+  }
+
+  async function handleConfirmComplete() {
+    setCompleteError(null);
+    if (!tenantId || !completeBooking) return;
+
+    // Evitar que el mismo profesional marque su parte más de una vez
+    if (
+      professionalId &&
+      Array.isArray(completeBooking.professionalsCompleted) &&
+      completeBooking.professionalsCompleted.includes(professionalId)
+    ) {
+      setCompleteError("Ya marcaste tu parte como completada.");
+      return;
+    }
+
+    const allItems = Array.isArray(completeBooking.items)
+      ? completeBooking.items
+      : [];
+    const items = professionalId
+      ? allItems.filter((it) => it.professionalId === professionalId)
+      : allItems;
+    const payments = [];
+    let total = 0;
+
+    for (const item of items) {
+      const sid = item.serviceId || item.serviceId;
+      const raw = completeServiceAmounts[sid];
+      const amt = Number(raw || 0);
+      // Si el servicio es rango/tbd, requerir valor
+      const type = normalizePriceType(item?.priceType);
+      if (
+        (type === "range" || type === "tbd") &&
+        (raw === undefined || raw === null || String(raw).trim() === "")
+      ) {
+        setCompleteError(
+          "Ingresa el monto para todos los servicios con precio variable.",
+        );
+        return;
+      }
+      const method = completeServiceMethods[sid] || "efectivo";
+      payments.push({
+        serviceId: sid,
+        serviceName: item.serviceName,
+        professionalId: item.professionalId,
+        amount: amt,
+        method,
+      });
+      total += amt;
+    }
+
+    // Actualizar reserva y documento de informe mensual (incremental)
+    try {
+      setIsCompleting(true);
+
+      // actualizar booking: añadir pagos parciales del profesional y aumentar collectedTotal
+      const bookingRef = doc(
+        db,
+        "tenants",
+        tenantId,
+        "bookings",
+        completeBooking.id,
+      );
+
+      const updatePayload = {
+        collectedTotal: increment(total),
+      };
+
+      // si este profesional es el único en la reserva, marcar como completada
+      const allItemsCount = allItems.length;
+      const myItemsCount = items.length;
+      if (myItemsCount > 0 && myItemsCount === allItemsCount) {
+        updatePayload.status = "completed";
+        updatePayload.completedAt = Timestamp.now();
+      }
+
+      // usar arrayUnion para anexar pagos sin sobrescribir los existentes
+      if (payments.length > 0) updatePayload.payments = arrayUnion(...payments);
+      // marcar que este profesional completó su parte (para evitar doble conteo)
+      if (professionalId)
+        updatePayload.professionalsCompleted = arrayUnion(professionalId);
+
+      await updateDoc(bookingRef, updatePayload);
+
+      // actualizar informe mensual (tenant-level) y además el informe por profesional
+      const now = new Date();
+      const monthId = format(now, "yyyy-MM");
+
+      // preparar payloads basados SOLO en los pagos creados por este profesional en esta acción
+      const tenantReportRef = doc(db, "tenants", tenantId, "reports", monthId);
+      const profReportRef = professionalId
+        ? doc(
+            db,
+            "tenants",
+            tenantId,
+            "professionals",
+            professionalId,
+            "reports",
+            monthId,
+          )
+        : null;
+
+      const reportPayload = { totalEarned: increment(total) };
+      const profReportPayload = { totalEarned: increment(total) };
+
+      const methodTotals = {};
+      const serviceTotals = {};
+      for (const p of payments) {
+        methodTotals[p.method] =
+          (methodTotals[p.method] || 0) + (p.amount || 0);
+        serviceTotals[p.serviceId] = serviceTotals[p.serviceId] || {
+          count: 0,
+          revenue: 0,
+        };
+        serviceTotals[p.serviceId].count += 1;
+        serviceTotals[p.serviceId].revenue += p.amount || 0;
+      }
+
+      for (const [m, amt] of Object.entries(methodTotals)) {
+        reportPayload[`paymentMethods.${m}`] = increment(amt);
+        if (profReportRef)
+          profReportPayload[`paymentMethods.${m}`] = increment(amt);
+      }
+      for (const [sid, stat] of Object.entries(serviceTotals)) {
+        reportPayload[`services.${sid}.count`] = increment(stat.count);
+        reportPayload[`services.${sid}.revenue`] = increment(stat.revenue);
+        if (profReportRef) {
+          profReportPayload[`services.${sid}.count`] = increment(stat.count);
+          profReportPayload[`services.${sid}.revenue`] = increment(
+            stat.revenue,
+          );
+        }
+      }
+
+      // aplicar actualizaciones
+      const updates = [setDoc(tenantReportRef, reportPayload, { merge: true })];
+      if (profReportRef)
+        updates.push(setDoc(profReportRef, profReportPayload, { merge: true }));
+      await Promise.all(updates);
+
+      queryClient.invalidateQueries({
+        queryKey: ["bookings-date", tenantId, selectedDate],
+      });
+      setIsCompleting(false);
+      setCompleteModalOpen(false);
+    } catch (err) {
+      console.error("Error al completar reserva y actualizar informe:", err);
+      setCompleteError("Error al completar reserva. Intenta nuevamente.");
+      setIsCompleting(false);
+    }
+  }
+
   return (
     <AdminLayout title="Reservas">
       <div className="bookings-page">
         <div className="admin-page-header">
           <h1 className="admin-page-title">Reservas</h1>
-          {/* Selector de fecha */}
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="date-input"
-          />
+          <div className="admin-page-controls">
+            {/* Selector de fecha */}
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="date-input"
+            />
+          </div>
         </div>
-
+        <button
+          className="action-btn action-btn--confirm"
+          onClick={handleOpenBookingPageForClient}
+          title="Crear reserva para un cliente"
+        >
+          Crear reserva para cliente
+        </button>
         {/* Filtros de estado */}
         <p className="bookings-date-label">{formattedDate}</p>
         <div className="bookings-filters">
@@ -479,6 +982,294 @@ export default function BookingsPage() {
                 tenantSlug={tenantSlug}
               />
             ))}
+          </div>
+        )}
+
+        {/* Modal: Crear reserva desde panel (profesional) */}
+        {createModalOpen && (
+          <div className="modal-overlay" onClick={closeCreateModal}>
+            <div
+              className="modal-card modal-card--form"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-card__header">
+                <h3 className="modal-card__title">
+                  Crear reserva para cliente
+                </h3>
+                <button
+                  className="modal-card__close"
+                  onClick={closeCreateModal}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="modal-card__body modal-card__body--scroll">
+                <p className="booking-detail__label">Cliente</p>
+                <input
+                  type="text"
+                  placeholder="Nombre del cliente"
+                  value={createClientName}
+                  onChange={(e) => setCreateClientName(e.target.value)}
+                  className="date-input"
+                />
+                <input
+                  type="tel"
+                  placeholder="Teléfono del cliente"
+                  value={createClientPhone}
+                  onChange={(e) => setCreateClientPhone(e.target.value)}
+                  className="date-input"
+                />
+                <input
+                  type="email"
+                  placeholder="Email (opcional)"
+                  value={createClientEmail}
+                  onChange={(e) => setCreateClientEmail(e.target.value)}
+                  className="date-input"
+                />
+                <p className="modal-note">
+                  Si no se proporciona email, no se notificarán automáticamente
+                  las actualizaciones de la reserva al cliente.
+                </p>
+
+                <p className="booking-detail__label">Servicios</p>
+                {services.filter((s) =>
+                  (s.professionalIds || []).includes(professionalId),
+                ).length === 0 ? (
+                  <p>No hay servicios asignados a este profesional.</p>
+                ) : (
+                  services
+                    .filter((s) =>
+                      (s.professionalIds || []).includes(professionalId),
+                    )
+                    .map((s) => (
+                      <label key={s.id} className="modal-item">
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <div>
+                            <input
+                              type="checkbox"
+                              checked={createSelectedServiceIds.has(s.id)}
+                              onChange={() => toggleCreateService(s.id)}
+                            />
+                            <span style={{ marginLeft: 8 }}>{s.name}</span>
+                          </div>
+                          <span className="modal-item__price">
+                            {formatEntityPrice(s)}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "var(--color-text-tertiary)",
+                          }}
+                        >
+                          {s.duration} min
+                        </div>
+                      </label>
+                    ))
+                )}
+
+                <p className="booking-detail__label">Fecha</p>
+                <input
+                  type="date"
+                  value={createDate}
+                  onChange={(e) => setCreateDate(e.target.value)}
+                  className="date-input"
+                />
+
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    className="action-btn action-btn--confirm"
+                    onClick={handleSearchSlots}
+                    disabled={isSearchingSlots}
+                  >
+                    {isSearchingSlots ? "Buscando..." : "Buscar horarios"}
+                  </button>
+                </div>
+
+                {createError && (
+                  <p style={{ color: "var(--color-error)", marginTop: 8 }}>
+                    {createError}
+                  </p>
+                )}
+
+                {availableSlots.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <p className="booking-detail__label">
+                      Horarios disponibles
+                    </p>
+                    <div
+                      className="slots-grid"
+                      role="list"
+                      aria-label="Horarios disponibles"
+                    >
+                      {availableSlots.map((slot, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          className={`slot-card ${selectedSlotIndex === idx ? "slot-card--selected" : ""}`}
+                          onClick={() => setSelectedSlotIndex(idx)}
+                        >
+                          <div className="slot-card__time">
+                            {slot.startTime}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-card__actions">
+                <button
+                  className="action-btn action-btn--cancel"
+                  onClick={closeCreateModal}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="action-btn action-btn--confirm"
+                  onClick={handleSubmitCreateBooking}
+                  disabled={isCreating || selectedSlotIndex == null}
+                >
+                  {isCreating ? "Creando..." : "Crear reserva"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Completar reserva (ingresar cobros y método) */}
+        {completeModalOpen && completeBooking && (
+          <div
+            className="modal-overlay"
+            onClick={() => setCompleteModalOpen(false)}
+          >
+            <div
+              className="modal-card modal-card--form"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-card__header">
+                <h3 className="modal-card__title">
+                  Marcar reserva como completada
+                </h3>
+                <button
+                  className="modal-card__close"
+                  onClick={() => setCompleteModalOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="modal-card__body modal-card__body--scroll">
+                <p className="booking-detail__label">
+                  Reserva de: {completeBooking.clientName}
+                </p>
+                <p className="booking-detail__label">
+                  Servicios (ingresa monto cobrado por servicio)
+                </p>
+
+                {(
+                  (professionalId
+                    ? completeBooking.items?.filter(
+                        (it) => it.professionalId === professionalId,
+                      )
+                    : completeBooking.items) || []
+                ).map((item, i) => {
+                  const sid = item.serviceId || item.serviceId;
+                  const amt = completeServiceAmounts[sid] ?? 0;
+                  const method = completeServiceMethods[sid] || "efectivo";
+                  const info = getEntityPriceInfo(item);
+                  const suggestedText =
+                    info.kind === "fixed"
+                      ? info.amount === 0
+                        ? "Gratis"
+                        : formatPrice(info.amount)
+                      : info.kind === "range"
+                        ? `${formatPrice(info.min)} - ${formatPrice(info.max)}`
+                        : info.kind === "tbd"
+                          ? "A definir"
+                          : "";
+
+                  return (
+                    <div key={i} className="modal-item">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <div>
+                          <div className="modal-item__service">
+                            {item.serviceName}
+                          </div>
+                          <div className="modal-item__meta">
+                            {suggestedText}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 6,
+                            minWidth: 140,
+                          }}
+                        >
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={amt}
+                            onChange={(e) =>
+                              handleSetCompleteAmount(sid, e.target.value)
+                            }
+                            className="date-input"
+                          />
+                          <select
+                            value={method}
+                            onChange={(e) =>
+                              handleSetCompleteMethod(sid, e.target.value)
+                            }
+                            className="date-input"
+                          >
+                            <option value="efectivo">Efectivo</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="transferencia">Transferencia</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {completeError && (
+                  <p style={{ color: "var(--color-error)" }}>{completeError}</p>
+                )}
+              </div>
+
+              <div className="modal-card__actions">
+                <button
+                  className="action-btn action-btn--cancel"
+                  onClick={() => setCompleteModalOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="action-btn action-btn--confirm"
+                  onClick={handleConfirmComplete}
+                  disabled={isCompleting}
+                >
+                  {isCompleting ? "Guardando..." : "Confirmar completada"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

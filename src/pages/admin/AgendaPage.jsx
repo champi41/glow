@@ -11,6 +11,9 @@ import {
   collection,
   deleteDoc,
   Timestamp,
+  setDoc,
+  increment,
+  arrayUnion,
 } from "firebase/firestore";
 import { db } from "../../config/firebase.js";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -23,6 +26,11 @@ import {
   formatEntityPrice,
   formatTotalPrice,
   getFirstName,
+} from "../../utils/format.js";
+import {
+  getEntityPriceInfo,
+  normalizePriceType,
+  formatPrice,
 } from "../../utils/format.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./AgendaPage.css";
@@ -327,7 +335,7 @@ function DayView({
 }
 
 // ─── Modal de detalle de reserva ─────────────────────────────
-function BookingModal({ booking, onClose, onUpdateStatus }) {
+function BookingModal({ booking, onClose, onUpdateStatus, professionalId }) {
   if (!booking) return null;
 
   return (
@@ -395,15 +403,25 @@ function BookingModal({ booking, onClose, onUpdateStatus }) {
           )}
           {booking.status === "confirmed" && (
             <>
-              <button
-                className="action-btn action-btn--complete"
-                onClick={() => {
-                  onUpdateStatus(booking.id, "completed");
-                  onClose();
-                }}
-              >
-                Completada
-              </button>
+              {!(
+                professionalId &&
+                Array.isArray(booking.professionalsCompleted) &&
+                booking.professionalsCompleted.includes(professionalId)
+              ) ? (
+                <button
+                  className="action-btn action-btn--complete"
+                  onClick={() => {
+                    onUpdateStatus(booking.id, "completed");
+                    onClose();
+                  }}
+                >
+                  Completada
+                </button>
+              ) : (
+                <button className="action-btn" disabled>
+                  Completada (tu parte)
+                </button>
+              )}
               <button
                 className="action-btn action-btn--cancel"
                 onClick={() => {
@@ -432,6 +450,13 @@ export default function AgendaPage() {
   );
   const [selectedDay, setSelectedDay] = useState(format(today, "yyyy-MM-dd"));
   const [selectedBooking, setSelectedBooking] = useState(null);
+  // Estado para completar reserva (modal de cobro)
+  const [completeModalOpen, setCompleteModalOpen] = useState(false);
+  const [completeBooking, setCompleteBooking] = useState(null);
+  const [completeServiceAmounts, setCompleteServiceAmounts] = useState({});
+  const [completeServiceMethods, setCompleteServiceMethods] = useState({});
+  const [completeError, setCompleteError] = useState(null);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const { data: tenant } = useTenantById(tenantId);
   const { data: professionals = [] } = useProfessionals(tenantId);
@@ -451,6 +476,49 @@ export default function AgendaPage() {
   }
 
   async function handleUpdateStatus(bookingId, newStatus) {
+    // Si se marca como completada, abrir modal para ingresar cobros/metodo
+    if (newStatus === "completed") {
+      const booking =
+        (bookings || []).find((b) => b.id === bookingId) || selectedBooking;
+      if (!booking) {
+        try {
+          await updateDoc(doc(db, "tenants", tenantId, "bookings", bookingId), {
+            status: newStatus,
+            completedAt: Timestamp.now(),
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["bookings-date", tenantId, selectedDay],
+          });
+        } catch (err) {
+          console.error("Error al actualizar reserva:", err);
+        }
+        return;
+      }
+
+      // Si el usuario es un profesional, verificar que la reserva incluya servicios suyos
+      const myItems = professionalId
+        ? (booking.items || []).filter(
+            (i) => i.professionalId === professionalId,
+          )
+        : booking.items || [];
+      if (professionalId && (!myItems || myItems.length === 0)) {
+        return;
+      }
+
+      // Evitar abrir modal si ya completó su parte
+      if (
+        professionalId &&
+        Array.isArray(booking.professionalsCompleted) &&
+        booking.professionalsCompleted.includes(professionalId)
+      ) {
+        return;
+      }
+
+      // abrir modal con valores sugeridos
+      openCompleteModal(booking);
+      return;
+    }
+
     try {
       const payload = {
         status: newStatus,
@@ -497,6 +565,169 @@ export default function AgendaPage() {
       });
     } catch (err) {
       console.error("Error al togglear bloqueo:", err);
+    }
+  }
+
+  function openCompleteModal(booking) {
+    setCompleteBooking(booking);
+    const amounts = {};
+    const methods = {};
+    const itemsToInit = professionalId
+      ? (booking.items || []).filter((i) => i.professionalId === professionalId)
+      : booking.items || [];
+    for (const item of itemsToInit) {
+      const sid = item.serviceId || item.serviceId;
+      const info = getEntityPriceInfo(item);
+      let suggested = 0;
+      if (info.kind === "fixed") suggested = info.amount || 0;
+      else if (info.kind === "range") suggested = info.min || 0;
+      else suggested = 0;
+      amounts[sid] = suggested;
+      methods[sid] = "efectivo";
+    }
+    setCompleteServiceAmounts(amounts);
+    setCompleteServiceMethods(methods);
+    setCompleteError(null);
+    setCompleteModalOpen(true);
+  }
+
+  function handleSetCompleteAmount(serviceId, value) {
+    setCompleteServiceAmounts((prev) => ({ ...prev, [serviceId]: value }));
+  }
+
+  function handleSetCompleteMethod(serviceId, method) {
+    setCompleteServiceMethods((prev) => ({ ...prev, [serviceId]: method }));
+  }
+
+  async function handleConfirmComplete() {
+    setCompleteError(null);
+    if (!tenantId || !completeBooking) return;
+
+    // Evitar que el mismo profesional marque su parte más de una vez
+    if (
+      professionalId &&
+      Array.isArray(completeBooking.professionalsCompleted) &&
+      completeBooking.professionalsCompleted.includes(professionalId)
+    ) {
+      setCompleteError("Ya marcaste tu parte como completada.");
+      return;
+    }
+    const allItems = Array.isArray(completeBooking.items)
+      ? completeBooking.items
+      : [];
+    const items = professionalId
+      ? allItems.filter((it) => it.professionalId === professionalId)
+      : allItems;
+    const payments = [];
+    let total = 0;
+
+    for (const item of items) {
+      const sid = item.serviceId || item.serviceId;
+      const raw = completeServiceAmounts[sid];
+      const amt = Number(raw || 0);
+      const type = normalizePriceType(item?.priceType);
+      if (
+        (type === "range" || type === "tbd") &&
+        (raw === undefined || raw === null || String(raw).trim() === "")
+      ) {
+        setCompleteError(
+          "Ingresa el monto para todos los servicios con precio variable.",
+        );
+        return;
+      }
+      const method = completeServiceMethods[sid] || "efectivo";
+      payments.push({
+        serviceId: sid,
+        serviceName: item.serviceName,
+        professionalId: item.professionalId,
+        amount: amt,
+        method,
+      });
+      total += amt;
+    }
+
+    try {
+      setIsCompleting(true);
+      const bookingRef = doc(
+        db,
+        "tenants",
+        tenantId,
+        "bookings",
+        completeBooking.id,
+      );
+
+      const updatePayload = { collectedTotal: increment(total) };
+      const allItemsCount = allItems.length;
+      const myItemsCount = items.length;
+      if (myItemsCount > 0 && myItemsCount === allItemsCount) {
+        updatePayload.status = "completed";
+        updatePayload.completedAt = Timestamp.now();
+      }
+      if (payments.length > 0) updatePayload.payments = arrayUnion(...payments);
+      if (professionalId)
+        updatePayload.professionalsCompleted = arrayUnion(professionalId);
+
+      await updateDoc(bookingRef, updatePayload);
+
+      const now = new Date();
+      const monthId = format(now, "yyyy-MM");
+      const tenantReportRef = doc(db, "tenants", tenantId, "reports", monthId);
+      const profReportRef = professionalId
+        ? doc(
+            db,
+            "tenants",
+            tenantId,
+            "professionals",
+            professionalId,
+            "reports",
+            monthId,
+          )
+        : null;
+
+      const reportPayload = { totalEarned: increment(total) };
+      const profReportPayload = { totalEarned: increment(total) };
+      const methodTotals = {};
+      const serviceTotals = {};
+      for (const p of payments) {
+        methodTotals[p.method] =
+          (methodTotals[p.method] || 0) + (p.amount || 0);
+        serviceTotals[p.serviceId] = serviceTotals[p.serviceId] || {
+          count: 0,
+          revenue: 0,
+        };
+        serviceTotals[p.serviceId].count += 1;
+        serviceTotals[p.serviceId].revenue += p.amount || 0;
+      }
+      for (const [m, amt] of Object.entries(methodTotals)) {
+        reportPayload[`paymentMethods.${m}`] = increment(amt);
+        if (profReportRef)
+          profReportPayload[`paymentMethods.${m}`] = increment(amt);
+      }
+      for (const [sid, stat] of Object.entries(serviceTotals)) {
+        reportPayload[`services.${sid}.count`] = increment(stat.count);
+        reportPayload[`services.${sid}.revenue`] = increment(stat.revenue);
+        if (profReportRef) {
+          profReportPayload[`services.${sid}.count`] = increment(stat.count);
+          profReportPayload[`services.${sid}.revenue`] = increment(
+            stat.revenue,
+          );
+        }
+      }
+
+      const updates = [setDoc(tenantReportRef, reportPayload, { merge: true })];
+      if (profReportRef)
+        updates.push(setDoc(profReportRef, profReportPayload, { merge: true }));
+      await Promise.all(updates);
+
+      queryClient.invalidateQueries({
+        queryKey: ["bookings-date", tenantId, selectedDay],
+      });
+      setIsCompleting(false);
+      setCompleteModalOpen(false);
+    } catch (err) {
+      console.error("Error al completar reserva y actualizar informe:", err);
+      setCompleteError("Error al completar reserva. Intenta nuevamente.");
+      setIsCompleting(false);
     }
   }
   return (
@@ -566,7 +797,131 @@ export default function AgendaPage() {
           booking={selectedBooking}
           onClose={() => setSelectedBooking(null)}
           onUpdateStatus={handleUpdateStatus}
+          professionalId={professionalId}
         />
+      )}
+
+      {/* Modal: Completar reserva (ingresar cobros y método) */}
+      {completeModalOpen && completeBooking && (
+        <div
+          className="modal-overlay"
+          onClick={() => setCompleteModalOpen(false)}
+        >
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-card__header">
+              <h3 className="modal-card__title">
+                Marcar reserva como completada
+              </h3>
+              <button
+                className="modal-card__close"
+                onClick={() => setCompleteModalOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-card__body modal-card__body--scroll">
+              <p className="booking-detail__label">
+                Reserva de: {completeBooking.clientName}
+              </p>
+              <p className="booking-detail__label">
+                Servicios (ingresa monto cobrado por servicio)
+              </p>
+
+              {(
+                (professionalId
+                  ? completeBooking.items?.filter(
+                      (it) => it.professionalId === professionalId,
+                    )
+                  : completeBooking.items) || []
+              ).map((item, i) => {
+                const sid = item.serviceId || item.serviceId;
+                const amt = completeServiceAmounts[sid] ?? 0;
+                const method = completeServiceMethods[sid] || "efectivo";
+                const info = getEntityPriceInfo(item);
+                const suggestedText =
+                  info.kind === "fixed"
+                    ? info.amount === 0
+                      ? "Gratis"
+                      : formatPrice(info.amount)
+                    : info.kind === "range"
+                      ? `${formatPrice(info.min)} - ${formatPrice(info.max)}`
+                      : info.kind === "tbd"
+                        ? "A definir"
+                        : "";
+
+                return (
+                  <div key={i} className="modal-item">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div>
+                        <div className="modal-item__service">
+                          {item.serviceName}
+                        </div>
+                        <div className="modal-item__meta">{suggestedText}</div>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                          minWidth: 140,
+                        }}
+                      >
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={amt}
+                          onChange={(e) =>
+                            handleSetCompleteAmount(sid, e.target.value)
+                          }
+                          className="date-input"
+                        />
+                        <select
+                          value={method}
+                          onChange={(e) =>
+                            handleSetCompleteMethod(sid, e.target.value)
+                          }
+                          className="date-input"
+                        >
+                          <option value="efectivo">Efectivo</option>
+                          <option value="tarjeta">Tarjeta</option>
+                          <option value="transferencia">Transferencia</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {completeError && (
+                <p style={{ color: "var(--color-error)" }}>{completeError}</p>
+              )}
+            </div>
+
+            <div className="modal-card__actions">
+              <button
+                className="action-btn action-btn--cancel"
+                onClick={() => setCompleteModalOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="action-btn action-btn--confirm"
+                onClick={handleConfirmComplete}
+                disabled={isCompleting}
+              >
+                {isCompleting ? "Guardando..." : "Confirmar completada"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </AdminLayout>
   );

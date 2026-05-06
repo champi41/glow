@@ -105,7 +105,8 @@ function getDepositRequiredForBooking(tenantDeposit, items) {
 
   const list = Array.isArray(items) ? items : [];
   const allItemsFree =
-    list.length > 0 && list.every((i) => normalizePriceType(i?.priceType) === "free");
+    list.length > 0 &&
+    list.every((i) => normalizePriceType(i?.priceType) === "free");
   if (allItemsFree) return false;
 
   if (tenantDeposit.type === "fixed") {
@@ -148,7 +149,24 @@ export default function BookingPage() {
   const [assignments, setAssignments] = useState({}); // { serviceId: profId | "any" }
   const [selectedDate, setSelectedDate] = useState(null); // "YYYY-MM-DD"
   const [selectedSlotData, setSelectedSlotData] = useState(null); // objeto completo de slots.js
-  const [clientData, setClientData] = useState(() => readCachedClientData());
+
+  // Inicializar datos de cliente, usando cache local o query params si están presentes
+  const [clientData, setClientData] = useState(() => {
+    const cached = readCachedClientData();
+    const paramName = searchParams.get("clientName");
+    const paramPhone = searchParams.get("clientPhone");
+    const paramEmail = searchParams.get("clientEmail");
+
+    const normalizedPhone = paramPhone
+      ? normalizeChileanPhone(paramPhone)
+      : cached.clientPhone;
+
+    return {
+      clientName: paramName || cached.clientName,
+      clientPhone: normalizedPhone || cached.clientPhone,
+      clientEmail: paramEmail || cached.clientEmail,
+    };
+  });
   const [confirmedBooking, setConfirmedBooking] = useState(null); // booking guardado
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -472,7 +490,8 @@ export default function BookingPage() {
       );
 
       const totalPriceInfo = getTotalPriceInfo(items);
-      const totalPrice = totalPriceInfo.kind === "fixed" ? totalPriceInfo.amount : null;
+      const totalPrice =
+        totalPriceInfo.kind === "fixed" ? totalPriceInfo.amount : null;
 
       const depositRequired = getDepositRequiredForBooking(
         tenant?.deposit,

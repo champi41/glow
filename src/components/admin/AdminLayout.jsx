@@ -1,7 +1,13 @@
 // src/components/admin/AdminLayout.jsx
 
 import { NavLink } from "react-router-dom";
-import { CalendarDays, ClipboardList, UserCircle, Store } from "lucide-react";
+import {
+  CalendarDays,
+  ClipboardList,
+  UserCircle,
+  Store,
+  BarChart,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenantById } from "../../hooks/useTenant.js";
 import { useEffect } from "react";
@@ -23,6 +29,13 @@ const NAV_ITEMS = [
     manageOnly: false,
   },
   {
+    to: "/admin/informes",
+    icon: BarChart,
+    label: "Informes",
+    manageOnly: true,
+    showToProfessionals: true,
+  },
+  {
     to: "/admin/negocio",
     icon: Store,
     label: "Negocio",
@@ -37,7 +50,7 @@ const NAV_ITEMS = [
 ];
 
 export default function AdminLayout({ children, title }) {
-  const { canManage, tenantId } = useAuth();
+  const { canManage, tenantId, professionalId } = useAuth();
   const { data: tenant } = useTenantById(tenantId);
 
   // Ajustar título y favicon del dashboard admin según tenant
@@ -74,9 +87,15 @@ export default function AdminLayout({ children, title }) {
   const showIOSHint = isIOS && !isInstalled;
 
   // Filtrar nav según rol
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.manageOnly || canManage,
-  );
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    // If not restricted to managers, always visible
+    if (!item.manageOnly) return true;
+    // Managers/owners see it
+    if (canManage) return true;
+    // Some items are explicitly visible to professionals
+    if (item.showToProfessionals && professionalId) return true;
+    return false;
+  });
 
   return (
     <div className="admin-layout">

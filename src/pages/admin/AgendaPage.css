@@ -441,13 +441,53 @@
   text-decoration: none;
   padding: 8px 0;
 }
-.modal-card__actions{
+.modal-card__actions {
   display: flex;
   gap: 10px;
 }
 .modal-card__actions .action-btn {
   flex: 1;
   justify-content: center;
+}
+
+.action-btn[disabled] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.slot-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.slot-card__time {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.slot-card--selected {
+  border-color: var(--color-accent);
+  background: var(--color-accent-bg);
+}
+
+.slot-card:focus {
+  outline: 3px solid rgba(0, 0, 0, 0.06);
 }
 
 /* Reemplazar .agenda-hour-line existente */

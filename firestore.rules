@@ -44,6 +44,14 @@ service cloud.firestore {
       match /professionals/{profId} {
         allow read: if true;
         allow create, update, delete: if canManageTenant(tenantId);
+
+        // Reports per professional: /tenants/{tenantId}/professionals/{profId}/reports/{yyyy-MM}
+        match /reports/{reportId} {
+          // Lectura: miembros del tenant o el propio profesional
+          allow read: if canManageTenant(tenantId) || (isSignedIn() && myUserDoc().professionalId == profId);
+          // Escritura: miembros del tenant o el propio profesional
+          allow create, update, delete: if canManageTenant(tenantId) || (isSignedIn() && myUserDoc().professionalId == profId);
+        }
       }
 
       // Services
@@ -80,6 +88,13 @@ service cloud.firestore {
       match /reviews/{reviewId} {
         allow read, create: if true;
         allow update, delete: if canManageTenant(tenantId);
+      }
+
+      // Reports: informes mensuales (/tenants/{tenantId}/reports/{yyyy-MM})
+      match /reports/{reportId} {
+        // Solo miembros del tenant o superadmin pueden leer y modificar los informes
+        allow read: if canManageTenant(tenantId);
+        allow create, update, delete: if canManageTenant(tenantId);
       }
     }
   }
