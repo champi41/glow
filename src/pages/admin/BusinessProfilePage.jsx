@@ -18,6 +18,7 @@ import {
   Clock,
   Store,
   ChevronDown,
+  CornerUpRight,
 } from "lucide-react";
 import ServicesPage from "./ServicesPage.jsx";
 import SchedulePage from "./SchedulePage.jsx";
@@ -136,6 +137,8 @@ export default function BusinessProfilePage() {
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("general");
   const selectorRef = useRef(null);
+  const [bizShareStatus, setBizShareStatus] = useState(null);
+  const bizShareTimeoutRef = useRef(null);
 
   useEffect(() => {
     function onDocClick(e) {
@@ -144,6 +147,12 @@ export default function BusinessProfilePage() {
     }
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (bizShareTimeoutRef.current) clearTimeout(bizShareTimeoutRef.current);
+    };
   }, []);
 
   function handleSelect(sectionKey) {
@@ -401,6 +410,54 @@ export default function BusinessProfilePage() {
           <h1 className="admin-page-title">Mi negocio</h1>
           {canManage && (
             <div className="business-profile-header-actions">
+              <button
+                type="button"
+                className="business-share-btn"
+                onClick={async () => {
+                  // copiar enlace del negocio
+                  const base =
+                    import.meta.env.VITE_PUBLIC_APP_URL ||
+                    (typeof window !== "undefined"
+                      ? window.location.origin
+                      : "");
+                  const slug = tenant?.slug || tenantId;
+                  const url = `${base}/${slug}`.replace(/([^:]\/)\/+/, "$1");
+                  try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                      await navigator.clipboard.writeText(url);
+                    } else {
+                      const inp = document.createElement("input");
+                      inp.value = url;
+                      document.body.appendChild(inp);
+                      inp.select();
+                      document.execCommand("copy");
+                      document.body.removeChild(inp);
+                    }
+                    setBizShareStatus("Enlace copiado");
+                  } catch (err) {
+                    console.error("Error copiando enlace negocio:", err);
+                    setBizShareStatus("Error");
+                  }
+                  if (bizShareTimeoutRef.current)
+                    clearTimeout(bizShareTimeoutRef.current);
+                  bizShareTimeoutRef.current = setTimeout(
+                    () => setBizShareStatus(null),
+                    1000,
+                  );
+                }}
+                aria-label="copiar link negocio"
+                title="copiar link negocio"
+              >
+                {bizShareStatus ? (
+                  <span className="business-share-text">{bizShareStatus}</span>
+                ) : (
+                  <>
+                    <CornerUpRight size={16} />
+                    <span className="business-share-label">Copiar link</span>
+                  </>
+                )}
+              </button>
+
               <div
                 className="business-profile-header-selector"
                 ref={selectorRef}

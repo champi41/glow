@@ -252,6 +252,35 @@
   gap: 12px;
 }
 
+.business-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px; /* match .selector-toggle */
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  min-height: 36px; /* ensure same visual height */
+}
+
+.business-share-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-accent);
+}
+
+.business-share-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.business-share-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .business-profile-header-reviews {
   display: inline-flex;
   align-items: center;

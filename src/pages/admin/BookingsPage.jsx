@@ -8,8 +8,10 @@ import {
   setDoc,
   increment,
   arrayUnion,
+  runTransaction,
 } from "firebase/firestore";
 import { db } from "../../config/firebase.js";
+// funciones removidas — usar lógica cliente
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenantById } from "../../hooks/useTenant.js";
 import { useBookingsByDate } from "../../hooks/useBookingsByDate.js";
@@ -117,6 +119,40 @@ function BookingCard({
     Array.isArray(booking.professionalsCompleted) &&
     booking.professionalsCompleted.includes(professionalId);
 
+  const myConfirmed =
+    professionalId &&
+    Array.isArray(booking.professionalsConfirmed) &&
+    booking.professionalsConfirmed.includes(professionalId);
+
+  const confirmedCount = Array.isArray(booking.professionalsConfirmed)
+    ? booking.professionalsConfirmed.length
+    : 0;
+
+  function canCompleteNow(booking) {
+    const startTime = getBookingStartTimeForProfessional(
+      booking,
+      professionalId,
+    );
+    const dateStr = booking.dateStr || booking.date;
+    if (!dateStr || !startTime) {
+      return true;
+    }
+    try {
+      const dt = parseISO(`${dateStr}T${startTime}:00`);
+      return new Date() >= dt;
+    } catch (err) {
+      console.warn("Error parseando fecha de reserva:", err);
+      return true;
+    }
+  }
+
+  const totalProfessionals = Array.isArray(booking.items)
+    ? new Set(booking.items.map((it) => it.professionalId)).size
+    : 0;
+  const completedCount = Array.isArray(booking.professionalsCompleted)
+    ? booking.professionalsCompleted.length
+    : 0;
+
   return (
     <div className={`booking-card booking-card--${booking.status}`}>
       {/* Fila principal */}
@@ -142,12 +178,25 @@ function BookingCard({
 
         <div className="booking-card__right">
           <div className="booking-card__badges">
-            <span className={`badge ${STATUS_CLASS[booking.status]}`}>
-              {STATUS_LABEL[booking.status]}
-            </span>
-            {myCompleted && (
-              <span className="badge badge--info booking-card__my-completed">
-                Tu parte completada
+            {myCompleted && booking.status === "confirmed" ? (
+              <>
+                <span className={`badge ${STATUS_CLASS["completed"]}`}>
+                  Completada
+                </span>
+                {totalProfessionals > 1 && (
+                  <span className="badge badge--muted booking-card__completion-fraction">
+                    {completedCount}/{totalProfessionals}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className={`badge ${STATUS_CLASS[booking.status]}`}>
+                {STATUS_LABEL[booking.status]}
+              </span>
+            )}
+            {booking.status === "pending" && totalProfessionals > 1 && (
+              <span className="badge badge--muted booking-card__confirm-fraction">
+                {confirmedCount}/{totalProfessionals}
               </span>
             )}
             {booking.depositStatus === "uploaded" && (
@@ -284,10 +333,13 @@ function BookingCard({
                     className="action-btn action-btn--confirm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onUpdateStatus(booking.id, "confirmed");
+                      if (!myConfirmed) onUpdateStatus(booking.id, "confirmed");
                     }}
+                    disabled={Boolean(myConfirmed)}
+                    title={myConfirmed ? "Ya confirmaste" : "Confirmar reserva"}
                   >
-                    <CheckCircle2 size={15} /> Confirmar
+                    <CheckCircle2 size={15} />{" "}
+                    {myConfirmed ? "Confirmado" : "Confirmar"}
                   </button>
                   <button
                     className="action-btn action-btn--cancel"
@@ -307,6 +359,12 @@ function BookingCard({
                       className="action-btn action-btn--complete"
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (!canCompleteNow(booking)) {
+                          alert(
+                            "No puedes marcar como completada antes de la hora de inicio de la reserva.",
+                          );
+                          return;
+                        }
                         onUpdateStatus(booking.id, "completed");
                       }}
                     >
@@ -487,14 +545,49 @@ export default function BookingsPage() {
     }
 
     try {
-      const payload = {
-        status: newStatus,
-        ...(newStatus === "cancelled" ? { cancelledBy: "professional" } : {}),
-      };
-      await updateDoc(
-        doc(db, "tenants", tenantId, "bookings", bookingId),
-        payload,
-      );
+      if (newStatus === "confirmed") {
+        const bookingRef = doc(db, "tenants", tenantId, "bookings", bookingId);
+        // Si el usuario es admin (no professionalId), marcar confirmado globalmente
+        if (!professionalId) {
+          await updateDoc(bookingRef, {
+            status: "confirmed",
+            confirmedAt: Timestamp.now(),
+          });
+        } else {
+          // Transacción: añadir professionalId a professionalsConfirmed y setear status si corresponde
+          await runTransaction(db, async (tx) => {
+            const snap = await tx.get(bookingRef);
+            if (!snap.exists()) throw new Error("Reserva no encontrada");
+            const booking = snap.data() || {};
+            const profIds = [
+              ...new Set(
+                (booking.items || [])
+                  .map((i) => i.professionalId)
+                  .filter(Boolean),
+              ),
+            ];
+            const current = Array.isArray(booking.professionalsConfirmed)
+              ? [...booking.professionalsConfirmed]
+              : [];
+            if (!current.includes(professionalId)) current.push(professionalId);
+            const updates = { professionalsConfirmed: current };
+            if (profIds.length > 0 && current.length >= profIds.length) {
+              updates.status = "confirmed";
+              updates.confirmedAt = Timestamp.now();
+            }
+            tx.update(bookingRef, updates);
+          });
+        }
+      } else {
+        const payload = {
+          status: newStatus,
+          ...(newStatus === "cancelled" ? { cancelledBy: "professional" } : {}),
+        };
+        await updateDoc(
+          doc(db, "tenants", tenantId, "bookings", bookingId),
+          payload,
+        );
+      }
       queryClient.invalidateQueries({
         queryKey: ["bookings-date", tenantId, selectedDate],
       });
@@ -897,9 +990,22 @@ export default function BookingsPage() {
       if (profReportRef)
         updates.push(setDoc(profReportRef, profReportPayload, { merge: true }));
       await Promise.all(updates);
-
+      // Invalidar listas de reservas y el informe mensual para refrescar datos inmediatamente
       queryClient.invalidateQueries({
         queryKey: ["bookings-date", tenantId, selectedDate],
+      });
+      const monthIdForReport = monthId;
+      queryClient.invalidateQueries({
+        queryKey: ["monthly-report", tenantId],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "monthly-report",
+          tenantId,
+          professionalId,
+          monthIdForReport,
+        ],
       });
       setIsCompleting(false);
       setCompleteModalOpen(false);

@@ -14,7 +14,9 @@ import {
   Bell,
   ToggleLeft,
   ToggleRight,
+  CornerUpRight,
 } from "lucide-react";
+import { useTenantById } from "../../hooks/useTenantById.js";
 import { usePushNotifications } from "../../hooks/usePushNotifications.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import "./ProfilePage.css";
@@ -80,6 +82,16 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const [uploadingPortfolioIndex, setUploadingPortfolioIndex] = useState(null);
+  const [professionalSlug, setProfessionalSlug] = useState(null);
+  const [shareStatus, setShareStatus] = useState(null);
+  const { data: tenant } = useTenantById(tenantId);
+  const shareTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (shareTimeoutRef.current) clearTimeout(shareTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!tenantId || !professionalId) {
@@ -104,6 +116,7 @@ export default function ProfilePage() {
               ? d.portfolioUrls
               : [],
           });
+          if (d.slug) setProfessionalSlug(d.slug);
         }
       } catch (err) {
         if (!cancelled) setError("No se pudo cargar el perfil.");
@@ -234,8 +247,56 @@ export default function ProfilePage() {
   }
 
   async function handleLogout() {
+    const ok = window.confirm(
+      "¿Cerrar sesión?\n¿Estás seguro que deseas cerrar sesión?",
+    );
+    if (!ok) return;
     await logout();
     navigate("/admin/login", { replace: true });
+  }
+
+  async function handleShareProfile(e) {
+    e?.preventDefault?.();
+    setShareStatus(null);
+    const base =
+      import.meta.env.VITE_PUBLIC_APP_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    const tenantSlug = tenant?.slug || "";
+    const profPart = professionalSlug || professionalId;
+    const url = `${base}/${tenantSlug}/pro/${profPart}`.replace(
+      /([^:]\/)\/+/,
+      "$1",
+    );
+
+    try {
+      // siempre intentamos compartir nativamente si está disponible
+      if (navigator.share) {
+        await navigator.share({ title: "Reservar", url });
+        setShareStatus("enlace copiado");
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        setShareStatus("enlace copiado");
+      } else {
+        // fallback: create temporary input
+        const inp = document.createElement("input");
+        inp.value = url;
+        document.body.appendChild(inp);
+        inp.select();
+        document.execCommand("copy");
+        document.body.removeChild(inp);
+        setShareStatus("Enlace copiado");
+      }
+    } catch (err) {
+      console.error("Error al compartir enlace:", err);
+      setShareStatus("Error al compartir");
+    }
+
+    // limpiar timeouts previos y ocultar el texto después de 1s
+    if (shareTimeoutRef.current) clearTimeout(shareTimeoutRef.current);
+    shareTimeoutRef.current = setTimeout(() => {
+      setShareStatus(null);
+      shareTimeoutRef.current = null;
+    }, 1000);
   }
 
   if (!professionalId) {
@@ -244,14 +305,16 @@ export default function ProfilePage() {
         <div className="profile-page">
           <div className="admin-page-header">
             <h1 className="admin-page-title">Mi perfil</h1>
-            <button
-              type="button"
-              className="profile-logout-btn"
-              onClick={handleLogout}
-              aria-label="Cerrar sesión"
-            >
-              <LogOut size={18} />
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                className="profile-logout-btn"
+                onClick={handleLogout}
+                aria-label="Cerrar sesión"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
           </div>
           <p className="profile-empty">
             No tienes un perfil de profesional asociado.
@@ -267,14 +330,16 @@ export default function ProfilePage() {
         <div className="profile-page">
           <div className="admin-page-header">
             <h1 className="admin-page-title">Mi perfil</h1>
-            <button
-              type="button"
-              className="profile-logout-btn"
-              onClick={handleLogout}
-              aria-label="Cerrar sesión"
-            >
-              <LogOut size={18} />
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                className="profile-logout-btn"
+                onClick={handleLogout}
+                aria-label="Cerrar sesión"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
           </div>
           <p className="profile-loading">Cargando perfil...</p>
         </div>
@@ -292,14 +357,34 @@ export default function ProfilePage() {
       <div className="profile-page">
         <div className="admin-page-header">
           <h1 className="admin-page-title">Mi perfil</h1>
-          <button
-            type="button"
-            className="profile-logout-btn"
-            onClick={handleLogout}
-            aria-label="Cerrar sesión"
-          >
-            <LogOut size={18} />
-          </button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button
+              type="button"
+              className="profile-share-btn"
+              onClick={handleShareProfile}
+              aria-label="Copiar link"
+              title="Copiar link"
+            >
+              {shareStatus ? (
+                <span className="profile-share-url" aria-live="polite">
+                  {shareStatus}
+                </span>
+              ) : (
+                <>
+                  <CornerUpRight size={18} />
+                  <span className="profile-share-label">Copiar link</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="profile-logout-btn"
+              onClick={handleLogout}
+              aria-label="Cerrar sesión"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
         <form className="profile-form" onSubmit={handleSubmit}>
           {/* Avatar */}

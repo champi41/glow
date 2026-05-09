@@ -6,6 +6,7 @@ import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import {
   doc,
+  getDoc,
   updateDoc,
   addDoc,
   collection,
@@ -338,6 +339,46 @@ function DayView({
 function BookingModal({ booking, onClose, onUpdateStatus, professionalId }) {
   if (!booking) return null;
 
+  const totalProfessionals = Array.isArray(booking.items)
+    ? new Set(booking.items.map((it) => it.professionalId)).size
+    : 0;
+  const confirmedCount = Array.isArray(booking.professionalsConfirmed)
+    ? booking.professionalsConfirmed.length
+    : 0;
+  const myConfirmed =
+    professionalId &&
+    Array.isArray(booking.professionalsConfirmed) &&
+    booking.professionalsConfirmed.includes(professionalId);
+
+  function getBookingStartTimeForProfessionalLocal(booking, professionalId) {
+    const items = Array.isArray(booking?.items) ? booking.items : [];
+    const relevant = professionalId
+      ? items.filter((i) => i?.professionalId === professionalId)
+      : [];
+    const list = relevant.length ? relevant : items;
+    const times = list
+      .map((i) => i?.startTime)
+      .filter((t) => typeof t === "string" && t.length > 0)
+      .sort();
+    return times[0] || "";
+  }
+
+  function canCompleteNow(booking) {
+    const startTime = getBookingStartTimeForProfessionalLocal(
+      booking,
+      professionalId,
+    );
+    const dateStr = booking.dateStr || booking.date;
+    if (!dateStr || !startTime) return true;
+    try {
+      const dt = parseISO(`${dateStr}T${startTime}:00`);
+      return new Date() >= dt;
+    } catch (err) {
+      console.warn("Error parseando fecha de reserva:", err);
+      return true;
+    }
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -384,11 +425,13 @@ function BookingModal({ booking, onClose, onUpdateStatus, professionalId }) {
               <button
                 className="action-btn action-btn--confirm"
                 onClick={() => {
-                  onUpdateStatus(booking.id, "confirmed");
+                  if (!myConfirmed) onUpdateStatus(booking.id, "confirmed");
                   onClose();
                 }}
+                disabled={Boolean(myConfirmed)}
+                title={myConfirmed ? "Ya confirmaste" : "Confirmar reserva"}
               >
-                Confirmar
+                {myConfirmed ? "Confirmado" : "Confirmar"}
               </button>
               <button
                 className="action-btn action-btn--cancel"
@@ -399,6 +442,13 @@ function BookingModal({ booking, onClose, onUpdateStatus, professionalId }) {
               >
                 Cancelar
               </button>
+              {totalProfessionals > 1 && (
+                <div style={{ marginLeft: 12 }}>
+                  <span className="badge badge--muted">
+                    {confirmedCount}/{totalProfessionals}
+                  </span>
+                </div>
+              )}
             </>
           )}
           {booking.status === "confirmed" && (
@@ -411,6 +461,12 @@ function BookingModal({ booking, onClose, onUpdateStatus, professionalId }) {
                 <button
                   className="action-btn action-btn--complete"
                   onClick={() => {
+                    if (!canCompleteNow(booking)) {
+                      alert(
+                        "No puedes marcar como completada antes de la hora de inicio de la reserva.",
+                      );
+                      return;
+                    }
                     onUpdateStatus(booking.id, "completed");
                     onClose();
                   }}
@@ -419,7 +475,7 @@ function BookingModal({ booking, onClose, onUpdateStatus, professionalId }) {
                 </button>
               ) : (
                 <button className="action-btn" disabled>
-                  Completada (tu parte)
+                  Completada
                 </button>
               )}
               <button
@@ -478,8 +534,20 @@ export default function AgendaPage() {
   async function handleUpdateStatus(bookingId, newStatus) {
     // Si se marca como completada, abrir modal para ingresar cobros/metodo
     if (newStatus === "completed") {
-      const booking =
-        (bookings || []).find((b) => b.id === bookingId) || selectedBooking;
+      let booking =
+        selectedBooking && selectedBooking.id === bookingId
+          ? selectedBooking
+          : null;
+      if (!booking) {
+        try {
+          const snap = await getDoc(
+            doc(db, "tenants", tenantId, "bookings", bookingId),
+          );
+          if (snap.exists()) booking = { id: snap.id, ...snap.data() };
+        } catch (err) {
+          console.error("Error obteniendo reserva:", err);
+        }
+      }
       if (!booking) {
         try {
           await updateDoc(doc(db, "tenants", tenantId, "bookings", bookingId), {
@@ -718,9 +786,22 @@ export default function AgendaPage() {
       if (profReportRef)
         updates.push(setDoc(profReportRef, profReportPayload, { merge: true }));
       await Promise.all(updates);
-
+      // Invalidar queries relevantes para refrescar informes inmediatamente
       queryClient.invalidateQueries({
         queryKey: ["bookings-date", tenantId, selectedDay],
+      });
+      const monthIdForReport = monthId;
+      queryClient.invalidateQueries({
+        queryKey: ["monthly-report", tenantId],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: [
+          "monthly-report",
+          tenantId,
+          professionalId,
+          monthIdForReport,
+        ],
       });
       setIsCompleting(false);
       setCompleteModalOpen(false);

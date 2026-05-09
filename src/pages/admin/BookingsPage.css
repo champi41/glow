@@ -277,6 +277,39 @@
   cursor: default;
 }
 
+.booking-card__completion-fraction {
+  margin-left: 6px;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-text-tertiary);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  padding: 3px 6px;
+  border-radius: 100px;
+  font-size: 12px;
+}
+
+.booking-card__confirm-fraction {
+  margin-left: 6px;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-text-tertiary);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  padding: 3px 6px;
+  border-radius: 100px;
+  font-size: 12px;
+}
+
+.booking-card__completion-asterisk {
+  margin-left: 6px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+/* removed visual asterisk; keep class in case needed later but hide by default */
+.booking-card__completion-asterisk {
+  display: none;
+}
+
 /* ── Detalle expandido ── */
 .booking-card__detail {
   border-top: 1px solid var(--color-separator);

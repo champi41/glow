@@ -21,6 +21,51 @@
   background: rgba(192, 57, 43, 0.06);
 }
 
+.profile-share-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.profile-share-btn:hover {
+  color: var(--color-accent);
+  background: rgba(52, 152, 219, 0.06);
+}
+
+.profile-share-btn {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.profile-share-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  text-transform: none;
+}
+
+.profile-share-url {
+  display: block;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
 .profile-loading,
 .profile-empty {
   padding: 48px 0;

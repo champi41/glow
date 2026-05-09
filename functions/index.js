@@ -137,7 +137,7 @@ function escapeHtml(value) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
@@ -366,6 +366,8 @@ exports.onBookingCreated = onDocumentCreated(
         console.error("Error enviando correo de confirmación (create):", err);
       }
     }
+
+    return null;
   },
 );
 
@@ -380,8 +382,6 @@ exports.onBookingCancelled = onDocumentUpdated(
 
     if (before.status === after.status) return null;
     if (after.status !== "cancelled") return null;
-
-    const cancelledBy = (after.cancelledBy || "").toLowerCase();
 
     const profIds = [
       ...new Set(
@@ -401,130 +401,29 @@ exports.onBookingCancelled = onDocumentUpdated(
 
       await sendPushNotification(subscription, {
         title: "❌ Reserva cancelada",
-        body:
-          cancelledBy === "client"
-            ? `${after.clientName} canceló · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`
-            : `Se canceló una reserva · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`,
+        body: `${after.clientName} · ${serviceNames}${dateStr ? ` el ${dateStr}` : ""}${timeStr ? ` a las ${timeStr}` : ""}`,
         icon: "/pwa-192x192.png",
         badge: "/pwa-192x192.png",
         data: { url: "/admin/reservas" },
       });
     }
-
-    // Enviamos correo de cancelación solo cuando la cancelación fue hecha por el staff.
-    if (cancelledBy === "professional") {
-      try {
-        await sendBookingStatusEmailToClient({
-          tenantId,
-          bookingId,
-          booking: after,
-          status: "cancelled",
-        });
-      } catch (err) {
-        console.error("Error enviando correo de cancelación:", err);
-      }
-    }
-
-    return null;
-  },
-);
-
-// ─── Trigger: reserva confirmada ─────────────────────────────
-exports.onBookingConfirmed = onDocumentUpdated(
-  "tenants/{tenantId}/bookings/{bookingId}",
-  async (event) => {
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-    const tenantId = event.params.tenantId;
-    const bookingId = event.params.bookingId;
-
-    if (before.status === after.status) return null;
-    if (after.status !== "confirmed") return null;
 
     try {
       await sendBookingStatusEmailToClient({
         tenantId,
         bookingId,
         booking: after,
-        status: "confirmed",
+        status: "cancelled",
       });
     } catch (err) {
-      console.error("Error enviando correo de confirmación:", err);
+      console.error("Error enviando correo de cancelación (update):", err);
     }
 
     return null;
   },
 );
 
-// ─── Trigger: cliente subió comprobante de abono ──────────────
-exports.onDepositProofUploaded = onDocumentUpdated(
-  "tenants/{tenantId}/bookings/{bookingId}",
-  async (event) => {
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-    const tenantId = event.params.tenantId;
-
-    if (before.depositStatus === after.depositStatus) return null;
-    if (after.depositStatus !== "uploaded") return null;
-
-    const profIds = [
-      ...new Set(
-        (after.items || []).map((i) => i.professionalId).filter(Boolean),
-      ),
-    ];
-
-    const serviceNames = (after.items || [])
-      .map((i) => i.serviceName)
-      .join(", ");
-    const timeStr = after.items?.[0]?.startTime || "";
-
-    for (const profId of profIds) {
-      const subscription = await getPushSubscription(tenantId, profId);
-      if (!subscription) continue;
-
-      await sendPushNotification(subscription, {
-        title: "📎 Comprobante de abono",
-        body: `${after.clientName} subió el comprobante · ${serviceNames} a las ${timeStr}`,
-        icon: "/pwa-192x192.png",
-        badge: "/pwa-192x192.png",
-        data: { url: "/admin/reservas" },
-      });
-    }
-
-    return null;
-  },
-);
-
-// ─── Trigger: limpiar comprobante cuando reserva se completa ───
-exports.onBookingCompletedCleanupDepositProof = onDocumentUpdated(
-  "tenants/{tenantId}/bookings/{bookingId}",
-  async (event) => {
-    const before = event.data.before.data();
-    const after = event.data.after.data();
-    const tenantId = event.params.tenantId;
-    const bookingId = event.params.bookingId;
-
-    if (before.status === after.status) return null;
-    if (after.status !== "completed") return null;
-
-    const proofUrl = after.depositProofUrl || "";
-    if (!proofUrl) return null;
-
-    try {
-      await deleteCloudinaryByUrl(proofUrl);
-
-      await getFirestore()
-        .doc(`tenants/${tenantId}/bookings/${bookingId}`)
-        .update({ depositProofUrl: null });
-    } catch (err) {
-      console.error("Error limpiando comprobante de Cloudinary:", err);
-    }
-
-    return null;
-  },
-);
-
-// ─── Trigger: limpiar imágenes de negocio reemplazadas/eliminadas ───
+// ─── Trigger: limpiar imágenes de tenant reemplazadas/eliminadas ───
 exports.onTenantImagesChangedCleanup = onDocumentUpdated(
   "tenants/{tenantId}",
   async (event) => {
