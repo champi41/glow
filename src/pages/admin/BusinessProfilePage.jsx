@@ -1,14 +1,22 @@
 // src/pages/admin/BusinessProfilePage.jsx
 
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { doc, updateDoc } from "firebase/firestore";
 import { useQueryClient } from "@tanstack/react-query";
 import { db } from "../../config/firebase.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenantById } from "../../hooks/useTenant.js";
+import { useProfessionals } from "../../hooks/useProfessionals.js";
+import { usePushNotifications } from "../../hooks/usePushNotifications.js";
 import {
   Check,
   Camera,
+  Plus,
+  X,
+  Bell,
+  ToggleLeft,
+  ToggleRight,
   Image as ImageIcon,
   Sun,
   Moon,
@@ -28,6 +36,7 @@ import "./BusinessProfilePage.css";
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djghs9u2k";
 const DESC_MAX = 200;
+const PORTFOLIO_MAX = 10;
 const DEFAULT_THEME = {
   mode: "light",
   accent: "#c17b5c",
@@ -102,16 +111,20 @@ async function uploadToCloudinary(file, folder) {
 }
 
 export default function BusinessProfilePage() {
-  const { tenantId, canManage } = useAuth();
+  const { tenantId, canManage, logout } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
     data: tenant,
     isLoading: tenantLoading,
     isError: tenantIsError,
   } = useTenantById(tenantId);
+  const { data: professionals = [] } = useProfessionals(tenantId);
   const logoInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const portfolioInputRef = useRef(null);
   const hydratedTenantRef = useRef(null);
+  const hydratedPortfolioRef = useRef(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -133,12 +146,33 @@ export default function BusinessProfilePage() {
   const [error, setError] = useState(null);
   const [deposit, setDeposit] = useState(DEFAULT_DEPOSIT);
   const [autoConfirmBookings, setAutoConfirmBookings] = useState(false);
+  const [portfolioUrls, setPortfolioUrls] = useState([]);
+  const [portfolioUploadingIndex, setPortfolioUploadingIndex] = useState(null);
+  const [portfolioError, setPortfolioError] = useState(null);
 
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("general");
   const selectorRef = useRef(null);
   const [bizShareStatus, setBizShareStatus] = useState(null);
   const bizShareTimeoutRef = useRef(null);
+
+  const isIndividualPlan = tenant?.plan === "individual";
+  const primaryProfessional = isIndividualPlan ? professionals[0] : null;
+  const primaryProfessionalId = primaryProfessional?.id ?? null;
+  const {
+    permission,
+    subscribed,
+    loading: pushLoading,
+    isSupported,
+    subscribe,
+    unsubscribe,
+    error: pushError,
+    isIOS,
+    isStandalone,
+  } = usePushNotifications({
+    tenantId,
+    professionalId: primaryProfessionalId,
+  });
 
   useEffect(() => {
     function onDocClick(e) {
@@ -209,6 +243,31 @@ export default function BusinessProfilePage() {
   }, [tenantId, tenant]);
 
   useEffect(() => {
+    if (!isIndividualPlan) {
+      hydratedPortfolioRef.current = null;
+      setPortfolioUrls([]);
+      return;
+    }
+    if (!primaryProfessionalId) {
+      hydratedPortfolioRef.current = null;
+      return;
+    }
+    if (hydratedPortfolioRef.current === primaryProfessionalId) return;
+
+    setPortfolioUrls(
+      Array.isArray(primaryProfessional?.portfolioUrls)
+        ? primaryProfessional.portfolioUrls
+        : [],
+    );
+
+    hydratedPortfolioRef.current = primaryProfessionalId;
+  }, [
+    isIndividualPlan,
+    primaryProfessionalId,
+    primaryProfessional?.portfolioUrls,
+  ]);
+
+  useEffect(() => {
     if (tenantIsError) {
       setError("No se pudo cargar el negocio.");
     }
@@ -254,6 +313,38 @@ export default function BusinessProfilePage() {
     const v = value.trim();
     if (!v) return "";
     return v.startsWith("#") ? v : `#${v}`;
+  }
+
+  function removePortfolioUrl(index) {
+    setPortfolioUrls((urls) => urls.filter((_, i) => i !== index));
+  }
+
+  function handlePortfolioAddClick() {
+    portfolioInputRef.current?.click();
+  }
+
+  async function handlePortfolioFileChange(e) {
+    const file = e.target.files?.[0];
+    if (!file || !tenantId || !primaryProfessionalId) return;
+    e.target.value = "";
+
+    const urls = portfolioUrls ?? [];
+    if (urls.length >= PORTFOLIO_MAX) return;
+
+    setPortfolioUploadingIndex(urls.length);
+    setPortfolioError(null);
+    try {
+      const timestamp = Date.now();
+      const secureUrl = await uploadToCloudinary(
+        file,
+        `barberia/${tenantId}/${primaryProfessionalId}/portfolio/${timestamp}`,
+      );
+      setPortfolioUrls((prev) => [...prev, secureUrl]);
+    } catch (err) {
+      setPortfolioError(err.message || "Error al subir la foto");
+    } finally {
+      setPortfolioUploadingIndex(null);
+    }
   }
 
   const recommendedList = theme.mode === "dark" ? DARK_ACCENTS : LIGHT_ACCENTS;
@@ -331,7 +422,11 @@ export default function BusinessProfilePage() {
     e.preventDefault();
     if (!tenantId) return;
     if (!form.name.trim()) {
-      setError("El nombre del negocio es obligatorio.");
+      setError(
+        isIndividualPlan
+          ? "Tu nombre es obligatorio."
+          : "El nombre del negocio es obligatorio.",
+      );
       return;
     }
     setSaving(true);
@@ -368,6 +463,17 @@ export default function BusinessProfilePage() {
         },
         autoConfirmBookings,
       });
+      if (isIndividualPlan && primaryProfessionalId) {
+        await updateDoc(
+          doc(db, "tenants", tenantId, "professionals", primaryProfessionalId),
+          {
+            portfolioUrls: portfolioUrls.length ? portfolioUrls : [],
+          },
+        );
+        queryClient.invalidateQueries({
+          queryKey: ["professionals", tenantId],
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["tenant-by-id", tenantId] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -378,12 +484,23 @@ export default function BusinessProfilePage() {
     }
   }
 
+  async function handleLogout() {
+    const ok = window.confirm(
+      "¿Cerrar sesión?\n¿Estás seguro que deseas cerrar sesión?",
+    );
+    if (!ok) return;
+    await logout();
+    navigate("/admin/login", { replace: true });
+  }
+
+  const pageTitle = isIndividualPlan ? "Mi perfil" : "Mi negocio";
+
   if (tenantLoading) {
     return (
-      <AdminLayout title="Mi negocio">
+      <AdminLayout title={pageTitle}>
         <div className="business-profile-page">
           <div className="admin-page-header">
-            <h1 className="admin-page-title">Mi negocio</h1>
+            <h1 className="admin-page-title">{pageTitle}</h1>
           </div>
           <p className="business-profile-loading">Cargando...</p>
         </div>
@@ -404,17 +521,17 @@ export default function BusinessProfilePage() {
   const CurrentSectionIcon = currentSection.icon;
 
   return (
-    <AdminLayout title="Mi negocio">
+    <AdminLayout title={pageTitle}>
       <div className="business-profile-page">
         <div className="admin-page-header">
-          <h1 className="admin-page-title">Mi negocio</h1>
+          <h1 className="admin-page-title">{pageTitle}</h1>
           {canManage && (
             <div className="business-profile-header-actions">
               <button
                 type="button"
                 className="business-share-btn"
                 onClick={async () => {
-                  // copiar enlace del negocio
+                  // compartir enlace del negocio
                   const base =
                     import.meta.env.VITE_PUBLIC_APP_URL ||
                     (typeof window !== "undefined"
@@ -433,10 +550,15 @@ export default function BusinessProfilePage() {
                       document.execCommand("copy");
                       document.body.removeChild(inp);
                     }
-                    setBizShareStatus("Enlace copiado");
+
+                    if (navigator.share) {
+                      await navigator.share({ title: "Reservar", url });
+                    }
+
+                    setBizShareStatus("Copiado");
                   } catch (err) {
                     console.error("Error copiando enlace negocio:", err);
-                    setBizShareStatus("Error");
+                    setBizShareStatus("Error al compartir");
                   }
                   if (bizShareTimeoutRef.current)
                     clearTimeout(bizShareTimeoutRef.current);
@@ -445,15 +567,15 @@ export default function BusinessProfilePage() {
                     1000,
                   );
                 }}
-                aria-label="copiar link negocio"
-                title="copiar link negocio"
+                aria-label="Compartir"
+                title="Compartir"
               >
                 {bizShareStatus ? (
                   <span className="business-share-text">{bizShareStatus}</span>
                 ) : (
                   <>
                     <CornerUpRight size={16} />
-                    <span className="business-share-label">Copiar link</span>
+                    <span className="business-share-label">Compartir</span>
                   </>
                 )}
               </button>
@@ -503,65 +625,12 @@ export default function BusinessProfilePage() {
             className="business-profile-form business-profile-form--general"
             onSubmit={handleSubmit}
           >
-            {/* Portada */}
-            <div className="business-profile-cover-wrap">
-              <label className="business-profile-cover-label">
-                Foto de portada
-              </label>
-              <button
-                type="button"
-                className="business-profile-cover-btn"
-                onClick={() => coverInputRef.current?.click()}
-                disabled={uploadingCover}
-                aria-label="Cambiar portada"
-              >
-                <div
-                  className={`business-profile-cover ${uploadingCover ? "business-profile-cover--uploading" : ""}`}
-                >
-                  {coverDisplay ? (
-                    <img
-                      src={coverDisplay}
-                      alt=""
-                      className="business-profile-cover__img"
-                    />
-                  ) : (
-                    <span className="business-profile-cover__placeholder">
-                      <ImageIcon size={32} />
-                    </span>
-                  )}
-                </div>
-                {uploadingCover && (
-                  <span className="business-profile-cover__overlay">
-                    Subiendo...
-                  </span>
-                )}
-              </button>
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/*"
-                className="business-profile-file-input"
-                onChange={handleCoverChange}
-                aria-hidden="true"
-              />
-              {form.coverUrl && (
-                <button
-                  type="button"
-                  className="business-profile-cover-remove"
-                  onClick={handleRemoveCover}
-                  disabled={uploadingCover}
-                  aria-label="Quitar portada"
-                >
-                  Quitar portada
-                </button>
-              )}
-            </div>
-
-            {error && <p className="business-profile-error">{error}</p>}
-
-            {/* Logo */}
-            <div className="business-profile-logo-wrap">
+            {/* Fotos */}
+            <div className="fotos">
               <div className="logobtn">
+                <label className="business-profile-cover-label">
+                  Foto de perfil
+                </label>
                 <button
                   type="button"
                   className="business-profile-logo-btn"
@@ -627,50 +696,109 @@ export default function BusinessProfilePage() {
                     }}
                     aria-label="Quitar logo"
                   >
-                    Quitar logo
+                    Quitar foto
+                  </button>
+                )}
+              </div>
+              <div className="business-profile-cover-wrap">
+                <label className="business-profile-cover-label">
+                  Foto de portada
+                </label>
+                <button
+                  type="button"
+                  className="business-profile-cover-btn"
+                  onClick={() => coverInputRef.current?.click()}
+                  disabled={uploadingCover}
+                  aria-label="Cambiar portada"
+                >
+                  <div
+                    className={`business-profile-cover ${uploadingCover ? "business-profile-cover--uploading" : ""}`}
+                  >
+                    {coverDisplay ? (
+                      <img
+                        src={coverDisplay}
+                        alt=""
+                        className="business-profile-cover__img"
+                      />
+                    ) : (
+                      <span className="business-profile-cover__placeholder">
+                        <ImageIcon size={32} />
+                      </span>
+                    )}
+                  </div>
+                  {uploadingCover && (
+                    <span className="business-profile-cover__overlay">
+                      Subiendo...
+                    </span>
+                  )}
+                </button>
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="business-profile-file-input"
+                  onChange={handleCoverChange}
+                  aria-hidden="true"
+                />
+                {form.coverUrl && (
+                  <button
+                    type="button"
+                    className="business-profile-cover-remove"
+                    onClick={handleRemoveCover}
+                    disabled={uploadingCover}
+                    aria-label="Quitar portada"
+                  >
+                    Quitar portada
                   </button>
                 )}
               </div>
 
-              <div className="nombreIg">
-                <div className="form-field">
-                  <label htmlFor="business-name">Nombre del negocio *</label>
-                  <input
-                    id="business-name"
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => setField("name", e.target.value)}
-                    placeholder="Nombre del negocio"
-                    required
-                  />
-                </div>
-                <div className="form-field">
-                  <label htmlFor="business-phone">Teléfono</label>
-                  <input
-                    id="business-phone"
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => setField("phone", e.target.value)}
-                    placeholder="+56 9 XXXX XXXX"
-                  />
-                </div>
+              {error && <p className="business-profile-error">{error}</p>}
+            </div>
 
-                <div className="form-field">
-                  <label htmlFor="business-instagram">Instagram</label>
-                  <input
-                    id="business-instagram"
-                    type="text"
-                    value={form.instagramUrl}
-                    onChange={(e) => setField("instagramUrl", e.target.value)}
-                    placeholder="@tulocal"
-                  />
-                </div>
+            {/* Logo */}
+            <div className="form-field">
+              <label htmlFor="business-name">
+                {isIndividualPlan ? "Tu nombre *" : "Nombre del negocio *"}
+              </label>
+              <input
+                id="business-name"
+                type="text"
+                value={form.name}
+                onChange={(e) => setField("name", e.target.value)}
+                placeholder={
+                  isIndividualPlan ? "Tu nombre" : "Nombre del negocio"
+                }
+                required
+              />
+            </div>
+            <div className="telig">
+              <div className="form-field">
+                <label htmlFor="business-phone">Teléfono</label>
+                <input
+                  id="business-phone"
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
+                  placeholder="9 8765 4321"
+                />
+              </div>
+
+              <div className="form-field">
+                <label htmlFor="business-instagram">Instagram</label>
+                <input
+                  id="business-instagram"
+                  type="text"
+                  value={form.instagramUrl}
+                  onChange={(e) => setField("instagramUrl", e.target.value)}
+                  placeholder={isIndividualPlan ? "@tuusuario" : "@tulocal"}
+                />
               </div>
             </div>
 
             <div className="form-field">
               <label htmlFor="business-desc">
-                Descripción{" "}
+                {isIndividualPlan ? "Descripción sobre ti" : "Descripción"}{" "}
                 <span className="business-profile-char-count">
                   {form.description.length}/{DESC_MAX}
                 </span>
@@ -681,7 +809,11 @@ export default function BusinessProfilePage() {
                 onChange={(e) =>
                   setField("description", e.target.value.slice(0, DESC_MAX))
                 }
-                placeholder="Breve descripción del negocio"
+                placeholder={
+                  isIndividualPlan
+                    ? "Breve descripción sobre ti"
+                    : "Breve descripción del negocio"
+                }
                 rows={3}
               />
             </div>
@@ -696,7 +828,69 @@ export default function BusinessProfilePage() {
                 placeholder="Dirección"
               />
             </div>
-
+            {isIndividualPlan && (
+              <section className="business-profile-portfolio">
+                <h3 className="business-profile-portfolio__title">Trabajos</h3>
+                <p className="business-profile-portfolio__subtitle">
+                  Agrega hasta {PORTFOLIO_MAX} fotos.
+                </p>
+                {!primaryProfessionalId ? (
+                  <p className="business-profile-loading">
+                    No hay profesionales activos para este plan.
+                  </p>
+                ) : (
+                  <>
+                    {portfolioError && (
+                      <p className="business-profile-error">{portfolioError}</p>
+                    )}
+                    <div className="business-profile-portfolio__grid">
+                      {portfolioUrls.map((url, index) => (
+                        <div
+                          key={url}
+                          className="business-profile-portfolio__thumb-wrap"
+                        >
+                          <img
+                            src={url}
+                            alt=""
+                            className="business-profile-portfolio__thumb"
+                          />
+                          <button
+                            type="button"
+                            className="business-profile-portfolio__remove"
+                            onClick={() => removePortfolioUrl(index)}
+                            aria-label="Quitar foto"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      {portfolioUploadingIndex != null && (
+                        <div className="business-profile-portfolio__skeleton" />
+                      )}
+                      {portfolioUrls.length < PORTFOLIO_MAX &&
+                        portfolioUploadingIndex === null && (
+                          <button
+                            type="button"
+                            className="business-profile-portfolio__add"
+                            onClick={handlePortfolioAddClick}
+                            aria-label="Agregar foto"
+                          >
+                            <Plus size={18} aria-hidden="true" />
+                          </button>
+                        )}
+                    </div>
+                    <input
+                      ref={portfolioInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="business-profile-file-input"
+                      onChange={handlePortfolioFileChange}
+                      aria-hidden="true"
+                    />
+                  </>
+                )}
+              </section>
+            )}
             <section className="business-profile-deposit">
               <h3 className="business-profile-deposit__title">
                 Confirmación de reservas
@@ -883,6 +1077,71 @@ export default function BusinessProfilePage() {
                 </>
               )}
             </section>
+
+            {isIndividualPlan && (
+              <div className="profile-notifications">
+                <h3 className="profile-portfolio__title">Notificaciones</h3>
+                {!primaryProfessionalId ? (
+                  <p className="profile-notifications__hint">
+                    No hay profesionales activos para este plan.
+                  </p>
+                ) : !isSupported ? (
+                  <p className="profile-notifications__hint">
+                    {isIOS
+                      ? isStandalone
+                        ? "En iPhone, las notificaciones push requieren iOS 16.4+. Si no aparecen, revisa Ajustes → Notificaciones y habilita las notificaciones de la app."
+                        : "En iPhone, las notificaciones push requieren iOS 16.4+ y abrir la app desde el ícono (Añadir a pantalla de inicio)."
+                      : "Tu navegador no soporta notificaciones push."}
+                  </p>
+                ) : permission === "denied" ? (
+                  <p className="profile-notifications__hint">
+                    Bloqueaste las notificaciones. Actívalas desde la
+                    configuración de tu navegador.
+                  </p>
+                ) : pushError ? (
+                  <p className="profile-notifications__hint">{pushError}</p>
+                ) : (
+                  <div className="profile-notifications__row">
+                    <div className="profile-notifications__left">
+                      <Bell size={16} aria-hidden="true" />
+                      <span className="profile-notifications__text">
+                        {subscribed
+                          ? "Notificaciones activadas"
+                          : "Recibe alertas de nuevas reservas"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="profile-notifications__toggle"
+                      onClick={subscribed ? unsubscribe : subscribe}
+                      disabled={pushLoading}
+                      aria-label={
+                        subscribed
+                          ? "Desactivar notificaciones"
+                          : "Activar notificaciones"
+                      }
+                    >
+                      {pushLoading ? (
+                        <span className="profile-notifications__loading">
+                          ...
+                        </span>
+                      ) : subscribed ? (
+                        <ToggleRight size={28} aria-hidden="true" />
+                      ) : (
+                        <ToggleLeft size={28} aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="business-profile-logout-btn"
+                  onClick={handleLogout}
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
 
             <button
               type="submit"

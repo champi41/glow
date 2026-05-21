@@ -126,7 +126,7 @@ export default function StepClientForm({
               </>
             )}
             <div className="booking-summary__grand-total">
-              <span>Total</span>
+              <span></span>
               <span className="booking-summary__total-price">
                 {formatPriceInfo(totalPriceInfo)}
               </span>

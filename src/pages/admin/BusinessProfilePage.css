@@ -30,6 +30,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-items: flex-start;
 }
 .business-profile-logo-btn {
   position: relative;
@@ -71,7 +72,10 @@
 .business-profile-logo--uploading {
   opacity: 0.6;
 }
-
+.fotos {
+  display: flex;
+  gap: 15px;
+}
 .business-profile-logo__img {
   width: 100%;
   height: 100%;
@@ -115,9 +119,13 @@
 .business-profile-cover-wrap {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
 }
-
+.telig {
+  display: flex;
+  gap: 10px;
+}
 .business-profile-cover-label {
   font-size: 13px;
   font-weight: 500;
@@ -216,12 +224,141 @@
   cursor: not-allowed;
 }
 
+/* prevent label and remove button text from wrapping */
+.logobtn > .business-profile-cover-label {
+  white-space: nowrap;
+}
+
+.business-profile-logo-remove {
+  white-space: nowrap;
+}
+
 .business-profile-file-input {
   position: absolute;
   width: 0;
   height: 0;
   opacity: 0;
   pointer-events: none;
+}
+
+/* ── Portafolio profesional ── */
+.business-profile-portfolio {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.business-profile-portfolio__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.business-profile-portfolio__subtitle {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+  margin: 0;
+}
+
+.business-profile-portfolio__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.business-profile-portfolio__thumb-wrap {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.business-profile-portfolio__thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.business-profile-portfolio__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-error);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: opacity 0.15s ease;
+}
+
+.business-profile-portfolio__remove:hover {
+  opacity: 0.9;
+}
+
+.business-profile-portfolio__add {
+  aspect-ratio: 1 / 1;
+  border: 1.5px dashed var(--color-border);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.business-profile-portfolio__add:hover {
+  color: var(--color-text-secondary);
+  border-color: var(--color-text-tertiary);
+}
+
+.business-profile-portfolio__skeleton {
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.business-profile-logout-btn {
+  margin-top: 8px;
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.business-profile-logout-btn:hover {
+  color: var(--color-error);
+  background: rgba(192, 57, 43, 0.06);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* ── Error ── */
@@ -248,16 +385,15 @@
 /* Header actions (reseñas) */
 .business-profile-header-actions {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .business-share-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px; /* match .selector-toggle */
-  border-radius: 8px;
+  padding: 0 10px; 
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg);
   color: var(--color-text-secondary);
@@ -301,14 +437,15 @@
 /* Selector en header */
 .business-profile-header-selector {
   position: relative;
+  display: flex;
 }
 
 .selector-toggle {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 0px 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg);
   color: var(--color-text-secondary);

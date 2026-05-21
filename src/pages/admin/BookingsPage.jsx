@@ -40,6 +40,7 @@ import {
   XCircle,
   Clock,
   Circle,
+  Plus,
 } from "lucide-react";
 import "./BookingsPage.css";
 
@@ -163,7 +164,6 @@ function BookingCard({
         aria-expanded={expanded}
       >
         <div className="booking-card__left">
-          <div className="booking-card__time">{displayStartTime || "—"}</div>
           <div className="booking-card__info">
             <span className="booking-card__client">{booking.clientName}</span>
             <span className="booking-card__meta">
@@ -177,42 +177,48 @@ function BookingCard({
         </div>
 
         <div className="booking-card__right">
-          <div className="booking-card__badges">
-            {myCompleted && booking.status === "confirmed" ? (
-              <>
-                <span className={`badge ${STATUS_CLASS["completed"]}`}>
-                  Completada
-                </span>
-                {totalProfessionals > 1 && (
-                  <span className="badge badge--muted booking-card__completion-fraction">
-                    {completedCount}/{totalProfessionals}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className={`badge ${STATUS_CLASS[booking.status]}`}>
-                {STATUS_LABEL[booking.status]}
-              </span>
-            )}
-            {booking.status === "pending" && totalProfessionals > 1 && (
-              <span className="badge badge--muted booking-card__confirm-fraction">
-                {confirmedCount}/{totalProfessionals}
-              </span>
-            )}
-            {booking.depositStatus === "uploaded" && (
-              <span className="badge badge--warning booking-card__deposit-badge">
-                📎 Comprobante
-              </span>
-            )}
-          </div>
+          <div className="booking-card__time">{displayStartTime || "—"}</div>
           <span className="booking-card__price">
             {formatTotalPrice(booking.items)}
           </span>
-          {expanded ? (
-            <ChevronUp size={16} className="booking-card__chevron" />
-          ) : (
-            <ChevronDown size={16} className="booking-card__chevron" />
-          )}
+          <div
+            className="chesta"
+            style={{ display: "flex", alignItems: "center", gap: "5px" }}
+          >
+            <div className="booking-card__badges">
+              {myCompleted && booking.status === "confirmed" ? (
+                <>
+                  <span className={`badge ${STATUS_CLASS["completed"]}`}>
+                    Completada
+                  </span>
+                  {totalProfessionals > 1 && (
+                    <span className="badge badge--muted booking-card__completion-fraction">
+                      {completedCount}/{totalProfessionals}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className={`badge ${STATUS_CLASS[booking.status]}`}>
+                  {STATUS_LABEL[booking.status]}
+                </span>
+              )}
+              {booking.status === "pending" && totalProfessionals > 1 && (
+                <span className="badge badge--muted booking-card__confirm-fraction">
+                  {confirmedCount}/{totalProfessionals}
+                </span>
+              )}
+              {booking.depositStatus === "uploaded" && (
+                <span className="badge badge--warning booking-card__deposit-badge">
+                  📎 Comprobante
+                </span>
+              )}
+            </div>
+            {expanded ? (
+              <ChevronUp size={16} className="booking-card__chevron" />
+            ) : (
+              <ChevronDown size={16} className="booking-card__chevron" />
+            )}
+          </div>
         </div>
       </div>
 
@@ -239,24 +245,6 @@ function BookingCard({
                 </span>
               </div>
             ))}
-          </div>
-
-          {/* Cliente */}
-          <div className="booking-detail__section">
-            <p className="booking-detail__label">Cliente</p>
-            <div className="booking-detail__client">
-              <a
-                href={`https://wa.me/${booking.clientPhone?.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                className="booking-detail__whatsapp"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className="mr-2">{booking.clientName}</span>
-                <Phone size={13} className="inline mr-1" />
-                {booking.clientPhone}
-              </a>
-            </div>
           </div>
 
           {/* Abono */}
@@ -326,7 +314,12 @@ function BookingCard({
           {!(
             booking.depositRequired && booking.depositStatus === "uploaded"
           ) && (
-            <div className="booking-detail__actions">
+            <div
+              className="booking-detail__actions"
+              style={
+                booking.status === "completed" ? { display: "flex" } : undefined
+              }
+            >
               {booking.status === "pending" && (
                 <>
                   <button
@@ -350,6 +343,15 @@ function BookingCard({
                   >
                     <XCircle size={15} /> Cancelar
                   </button>
+                  <a
+                    href={`https://wa.me/${booking.clientPhone?.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="booking-detail__whatsapp"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Phone size={13} className="inline mr-1" /> Contactar
+                  </a>
                 </>
               )}
               {booking.status === "confirmed" && (
@@ -368,7 +370,7 @@ function BookingCard({
                         onUpdateStatus(booking.id, "completed");
                       }}
                     >
-                      <CheckCircle2 size={15} /> Marcar completada
+                      <CheckCircle2 size={15} /> Completar
                     </button>
                   ) : (
                     <button className="action-btn" disabled>
@@ -384,6 +386,15 @@ function BookingCard({
                   >
                     <XCircle size={15} /> Cancelar
                   </button>
+                  <a
+                    href={`https://wa.me/${booking.clientPhone?.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="booking-detail__whatsapp"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Phone size={13} className="inline mr-1" /> Contactar
+                  </a>
                 </>
               )}
               {(booking.status === "completed" ||
@@ -1029,15 +1040,16 @@ export default function BookingsPage() {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="date-input"
             />
+            <button
+              className="action-btn--compact"
+              onClick={handleOpenBookingPageForClient}
+              title="Crear reserva"
+              aria-label="Crear reserva"
+            >
+              <Plus size={14} /> Reserva
+            </button>
           </div>
         </div>
-        <button
-          className="action-btn action-btn--confirm"
-          onClick={handleOpenBookingPageForClient}
-          title="Crear reserva para un cliente"
-        >
-          Crear reserva para cliente
-        </button>
         {/* Filtros de estado */}
         <p className="bookings-date-label">{formattedDate}</p>
         <div className="bookings-filters">

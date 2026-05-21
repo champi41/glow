@@ -52,6 +52,7 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children, title }) {
   const { canManage, tenantId, professionalId } = useAuth();
   const { data: tenant } = useTenantById(tenantId);
+  const isIndividualPlan = tenant?.plan === "individual";
 
   // Ajustar título y favicon del dashboard admin según tenant
   useEffect(() => {
@@ -88,6 +89,7 @@ export default function AdminLayout({ children, title }) {
 
   // Filtrar nav según rol
   const visibleItems = NAV_ITEMS.filter((item) => {
+    if (isIndividualPlan && item.to === "/admin/perfil") return false;
     // If not restricted to managers, always visible
     if (!item.manageOnly) return true;
     // Managers/owners see it
@@ -104,22 +106,29 @@ export default function AdminLayout({ children, title }) {
 
       {/* Bottom navigation */}
       <nav className="admin-bottom-nav">
-        {visibleItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            aria-label={item.label}
-            title={item.label}
-            className={({ isActive }) =>
-              ["admin-nav-item", isActive ? "admin-nav-item--active" : ""].join(
-                " ",
-              )
-            }
-          >
-            <item.icon size={25} strokeWidth={1.8} />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
+        {visibleItems.map((item) => {
+          const isIndividualProfile =
+            isIndividualPlan && item.to === "/admin/negocio";
+          const label = isIndividualProfile ? "Perfil" : item.label;
+          const IconComponent = isIndividualProfile ? UserCircle : item.icon;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              aria-label={label}
+              title={label}
+              className={({ isActive }) =>
+                [
+                  "admin-nav-item",
+                  isActive ? "admin-nav-item--active" : "",
+                ].join(" ")
+              }
+            >
+              <IconComponent size={25} strokeWidth={1.8} />
+              <span>{label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
 
       {(canInstall || showIOSHint) && (

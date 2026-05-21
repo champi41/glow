@@ -84,8 +84,15 @@ export default function ProfilePage() {
   const [uploadingPortfolioIndex, setUploadingPortfolioIndex] = useState(null);
   const [professionalSlug, setProfessionalSlug] = useState(null);
   const [shareStatus, setShareStatus] = useState(null);
-  const { data: tenant } = useTenantById(tenantId);
+  const { data: tenant, isLoading: tenantLoading } = useTenantById(tenantId);
   const shareTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (tenantLoading) return;
+    if (tenant?.plan === "individual") {
+      navigate("/admin/negocio", { replace: true });
+    }
+  }, [tenantLoading, tenant?.plan, navigate]);
 
   useEffect(() => {
     return () => {
@@ -269,23 +276,22 @@ export default function ProfilePage() {
     );
 
     try {
-      // siempre intentamos compartir nativamente si está disponible
-      if (navigator.share) {
-        await navigator.share({ title: "Reservar", url });
-        setShareStatus("enlace copiado");
-      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(url);
-        setShareStatus("enlace copiado");
       } else {
-        // fallback: create temporary input
         const inp = document.createElement("input");
         inp.value = url;
         document.body.appendChild(inp);
         inp.select();
         document.execCommand("copy");
         document.body.removeChild(inp);
-        setShareStatus("Enlace copiado");
       }
+
+      if (navigator.share) {
+        await navigator.share({ title: "Reservar", url });
+      }
+
+      setShareStatus("Copiado");
     } catch (err) {
       console.error("Error al compartir enlace:", err);
       setShareStatus("Error al compartir");
@@ -362,8 +368,8 @@ export default function ProfilePage() {
               type="button"
               className="profile-share-btn"
               onClick={handleShareProfile}
-              aria-label="Copiar link"
-              title="Copiar link"
+              aria-label="Compartir"
+              title="Compartir"
             >
               {shareStatus ? (
                 <span className="profile-share-url" aria-live="polite">
@@ -372,7 +378,7 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <CornerUpRight size={18} />
-                  <span className="profile-share-label">Copiar link</span>
+                  <span className="profile-share-label">Compartir</span>
                 </>
               )}
             </button>

@@ -77,7 +77,6 @@
 .admin-page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
 }
 
 .admin-page-title {

@@ -1,7 +1,11 @@
-.hero{
+.hero {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.hero--no-cover {
+  padding-top: 15px;
 }
 
 .hero__cover-wrap {
@@ -19,11 +23,7 @@
 .hero__cover-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 50%,
-    var(--color-bg) 100%
-  );
+  background: linear-gradient(to bottom, transparent 50%, var(--color-bg) 100%);
 }
 
 @keyframes heroZoom {
@@ -75,6 +75,59 @@
   font-weight: 300;
   color: var(--color-text-secondary);
   line-height: 1.7;
+  /* leave space on the right for the "Ver más" button */
+  padding-right: 56px;
+}
+
+/* clamp to two lines with ellipsis */
+.hero__description--clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  /* estándar */
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.hero__description-wrap {
+  position: relative;
+}
+
+.hero__description-fade {
+  position: absolute;
+  /* cover only the last line (second line) so first line isn't faded */
+  right: 56px;
+  bottom: 0;
+  width: 56px;
+  height: 1.7em;
+  background: linear-gradient(to left, var(--color-bg), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.hero__description-more {
+  position: absolute;
+  right: 0;
+  /* nudge slightly up so it aligns with the baseline of the second line */
+  bottom: 2px;
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-weight: 600;
+  cursor: pointer;
+  padding-left: 8px;
+  z-index: 5;
+  line-height: 1.7;
+}
+
+@media (max-width: 440px) {
+  .hero__description {
+    padding-right: 48px;
+  }
+  .hero__description-fade {
+    right: 48px;
+    width: 48px;
+    height: 1.7em;
+  }
 }
 
 /* Carrusel de botones (ubicación, teléfono, Instagram, horario) */
@@ -107,7 +160,10 @@
   color: var(--color-text-secondary);
   text-decoration: none;
   cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .hero__pill:hover {

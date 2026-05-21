@@ -42,8 +42,8 @@ export default function StepConfirmation({ booking, tenant, slug }) {
         </h2>
         <p className="confirmation__subtitle">
           {isAutoConfirmed
-            ? "Tu hora quedó confirmada automáticamente."
-            : "Te contactaremos por WhatsApp para confirmar tu hora."}
+            ? "Tu hora quedó confirmada."
+            : "Te contactaremos por correo para confirmar tu hora."}
         </p>
       </div>
 

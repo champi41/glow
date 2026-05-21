@@ -14,10 +14,10 @@
 }
 
 .date-input {
-  padding: 10px 15px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--color-bg-elevated);
+  padding: 0 10px;
   font-family: var(--font-body);
   font-size: 15px;
   font-weight: 400;
@@ -25,6 +25,31 @@
   outline: none;
   transition: border-color 0.15s ease;
 }
+.admin-page-controls {
+  display: flex;
+  gap: 10px;
+}
+.action-btn--compact {
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  display: inline-flex;
+  gap: 5px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 0.15s ease;
+  background: rgba(74, 124, 89, 0.1);
+  color: var(--color-success);
+  border-color: rgba(74, 124, 89, 0.2);
+}
+
+/* larger icon and accent color for visibility */
+
 
 .date-input:focus {
   border-color: var(--color-accent);
@@ -32,10 +57,11 @@
 
 .bookings-date-label {
   font-size: 12px;
+  justify-content: center;
+  display: flex;
   font-weight: 300;
   color: var(--color-text-tertiary);
   text-transform: capitalize;
-  padding-left: 2px;
 }
 
 /* ── Filtros ── */
@@ -393,6 +419,7 @@
 .booking-detail__whatsapp {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   font-size: 13px;
   font-weight: 400;
@@ -441,14 +468,15 @@
 
 /* ── Acciones ── */
 .booking-detail__actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
 
 .action-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   padding: 8px 14px;
   border-radius: var(--radius-sm);

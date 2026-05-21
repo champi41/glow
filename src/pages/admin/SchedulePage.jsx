@@ -155,7 +155,7 @@ function DayRow({ day, value, onChange, isProf = false }) {
 }
 
 // ─── Sección de horario del negocio ──────────────────────────
-function BusinessSchedule({ tenant, tenantId, queryClient }) {
+function BusinessSchedule({ tenant, tenantId, queryClient, isIndividualPlan }) {
   const [hours, setHours] = useState(() => tenant?.businessHours || {});
   const [initialHours, setInitialHours] = useState(
     () => tenant?.businessHours || {},
@@ -194,9 +194,13 @@ function BusinessSchedule({ tenant, tenantId, queryClient }) {
 
   return (
     <div className="schedule-section schedule-section--business">
-      <p className="schedule-section__title">Horario del negocio</p>
+      <p className="schedule-section__title">
+        {isIndividualPlan ? "Tu horario" : "Horario del negocio"}
+      </p>
       <p className="schedule-section__subtitle">
-        Los profesionales sin horario propio heredan este horario.
+        {isIndividualPlan
+          ? "Configura tu disponibilidad para recibir reservas."
+          : "Los profesionales sin horario propio heredan este horario."}
       </p>
 
       <div className="days-list">
@@ -371,6 +375,7 @@ export default function SchedulePage({ embedded = false }) {
   const queryClient = useQueryClient();
   const { data: tenant, isLoading } = useTenantById(tenantId);
   const { data: professionals = [] } = useProfessionals(tenantId);
+  const isIndividualPlan = tenant?.plan === "individual";
 
   const activeProfs = useMemo(
     () => professionals.filter((p) => p.isActive),
@@ -410,10 +415,11 @@ export default function SchedulePage({ embedded = false }) {
         tenant={tenant}
         tenantId={tenantId}
         queryClient={queryClient}
+        isIndividualPlan={isIndividualPlan}
       />
 
       {/* Horarios por profesional */}
-      {activeProfs.length > 0 && (
+      {!isIndividualPlan && activeProfs.length > 0 && (
         <div className="schedule-section">
           <p className="schedule-section__title">Horario por profesional</p>
           <p className="schedule-section__subtitle">
