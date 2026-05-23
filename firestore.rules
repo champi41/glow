@@ -78,6 +78,33 @@ service cloud.firestore {
           && resource.data.status in ['pending', 'confirmed']);
       }
 
+      // Booking slots: lectura pública para disponibilidad; escritura solo sistema/admin
+      match /bookingSlots/{slotId} {
+        allow read: if true;
+        allow create: if request.resource.data.status == 'active'
+          && request.resource.data.bookingId is string
+          && request.resource.data.dateStr is string
+          && request.resource.data.professionalId is string
+          && request.resource.data.startTime is string;
+
+        allow update: if canManageTenant(tenantId)
+          || (
+            request.resource.data.status == 'active'
+            && request.resource.data.bookingId is string
+            && request.resource.data.dateStr is string
+            && request.resource.data.professionalId is string
+            && request.resource.data.startTime is string
+          )
+          || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+            && request.resource.data.status == 'cancelled'
+            && resource.data.bookingId is string
+            && get(/databases/$(database)/documents/tenants/$(tenantId)/bookings/$(resource.data.bookingId)).data.status == 'cancelled'
+          );
+
+        allow delete: if canManageTenant(tenantId);
+      }
+
       // Blocks
       match /blocks/{blockId} {
         allow read: if true;

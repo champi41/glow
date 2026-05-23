@@ -20,6 +20,7 @@ import {
   getReviewByBookingId,
   createReview,
 } from "../../lib/firestore/reviews.js";
+import { releaseBookingSlots } from "../../lib/firestore/bookings.js";
 import "./BookingStatusPage.css";
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djghs9u2k";
@@ -206,6 +207,9 @@ export default function BookingStatusPage() {
         status: "cancelled",
         cancelledBy: "client",
       });
+      if (booking?.slotIds?.length) {
+        await releaseBookingSlots(tenantId, booking.slotIds);
+      }
       // onSnapshot actualizará la UI; Firebase Functions enviará la notificación a los profesionales
     } catch (err) {
       setCancelError(err.message || "No se pudo cancelar la reserva.");
@@ -250,9 +254,8 @@ export default function BookingStatusPage() {
             />
           )}
           <h1 className="booking-status-page__title">{tenant.name}</h1>
-          <h2 className="booking-status-page__subtitle">Mi reserva</h2>
         </header>
-
+        <h2 className="booking-status-page__subtitle">Mi reserva</h2>
         {/* Si la reserva está completada, mostrar formulario de reseña embebido */}
         {booking.status === "completed" && (
           <section className="booking-status__section booking-status__review review-page__inner">

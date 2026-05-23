@@ -9,7 +9,7 @@ import { useTenant } from "../../hooks/useTenant.js";
 import { useApplyTheme } from "../../hooks/useApplyTheme.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
 import { useServices } from "../../hooks/useServices.js";
-import { useBookingsByDateRealtime } from "../../hooks/useBookingsByDateRealtime.js";
+import { useBookingSlotsByDateRealtime } from "../../hooks/useBookingSlotsByDateRealtime.js";
 import { useBlocksByDateRealtime } from "../../hooks/useBlocksByDateRealtime.js";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -173,8 +173,23 @@ export default function BookingPage() {
 
   // ── Queries de disponibilidad (solo cuando hay fecha) ────
   // Realtime bookings and blocks for the selected date to keep slots in sync
-  const existingBookings = useBookingsByDateRealtime(tenantId, selectedDate);
+  const bookingSlots = useBookingSlotsByDateRealtime(tenantId, selectedDate);
   const existingBlocks = useBlocksByDateRealtime(tenantId, selectedDate);
+
+  const existingBookings = useMemo(() => {
+    return (bookingSlots || [])
+      .filter((slot) => slot.status !== "cancelled")
+      .map((slot) => ({
+        status: slot.status === "active" ? "confirmed" : slot.status,
+        items: [
+          {
+            professionalId: slot.professionalId,
+            startTime: slot.startTime,
+            endTime: slot.endTime || slot.startTime,
+          },
+        ],
+      }));
+  }, [bookingSlots]);
 
   // ── Inicialización desde query params ────────────────────
   useEffect(() => {
@@ -546,9 +561,13 @@ export default function BookingPage() {
       }
     } catch (err) {
       console.error("Error al crear reserva:", err);
-      setSubmitError(
-        "Ocurrió un error al guardar tu reserva. Intenta nuevamente.",
-      );
+      if (err?.code === "slot-unavailable") {
+        setSubmitError("Esa hora se acaba de reservar. Por favor, elige otra.");
+      } else {
+        setSubmitError(
+          "Ocurrió un error al guardar tu reserva. Intenta nuevamente.",
+        );
+      }
       // Cerrar la pestaña en blanco si existía
       try {
         if (newWin) newWin.close();

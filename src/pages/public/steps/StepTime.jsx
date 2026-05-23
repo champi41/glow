@@ -28,9 +28,6 @@ export default function StepTime({
           No encontramos disponibilidad para esta combinación.
         </p>
         <div className="step-time__empty-actions">
-          <button className="btn-outline" onClick={onChangeDate}>
-            Cambiar día
-          </button>
           {onChangeProfessional && (
             <button className="btn-outline" onClick={onChangeProfessional}>
               Cambiar profesional

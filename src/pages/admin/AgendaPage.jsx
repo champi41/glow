@@ -34,6 +34,7 @@ import {
   formatPrice,
 } from "../../utils/format.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
+import { releaseBookingSlots } from "../../lib/firestore/bookings.js";
 import "./AgendaPage.css";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -596,6 +597,15 @@ export default function AgendaPage() {
         doc(db, "tenants", tenantId, "bookings", bookingId),
         payload,
       );
+      if (newStatus === "cancelled") {
+        const booking =
+          selectedBooking && selectedBooking.id === bookingId
+            ? selectedBooking
+            : (bookings || []).find((b) => b.id === bookingId);
+        if (booking?.slotIds?.length) {
+          await releaseBookingSlots(tenantId, booking.slotIds);
+        }
+      }
       queryClient.invalidateQueries({
         queryKey: ["bookings-date", tenantId, selectedDay],
       });
@@ -858,6 +868,9 @@ export default function AgendaPage() {
               );
             })}
           </div>
+          <p className="agenda-instruction">
+            Pulsa una hora vacia para bloquearla/desbloquearla.
+          </p>
         </div>
 
         {/* Vista del día seleccionado */}

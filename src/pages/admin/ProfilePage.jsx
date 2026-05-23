@@ -318,7 +318,7 @@ export default function ProfilePage() {
                 onClick={handleLogout}
                 aria-label="Cerrar sesión"
               >
-                <LogOut size={18} />
+                <LogOut size={18} /> Cerrar sesión
               </button>
             </div>
           </div>
@@ -343,7 +343,7 @@ export default function ProfilePage() {
                 onClick={handleLogout}
                 aria-label="Cerrar sesión"
               >
-                <LogOut size={18} />
+                <LogOut size={18} /> Cerrar sesión
               </button>
             </div>
           </div>
@@ -381,14 +381,6 @@ export default function ProfilePage() {
                   <span className="profile-share-label">Compartir</span>
                 </>
               )}
-            </button>
-            <button
-              type="button"
-              className="profile-logout-btn"
-              onClick={handleLogout}
-              aria-label="Cerrar sesión"
-            >
-              <LogOut size={18} />
             </button>
           </div>
         </div>
@@ -576,35 +568,49 @@ export default function ProfilePage() {
             ) : pushError ? (
               <p className="profile-notifications__hint">{pushError}</p>
             ) : (
-              <div className="profile-notifications__row">
-                <div className="profile-notifications__left">
-                  <Bell size={16} aria-hidden="true" />
-                  <span className="profile-notifications__text">
-                    {subscribed
-                      ? "Notificaciones activadas"
-                      : "Recibe alertas de nuevas reservas"}
-                  </span>
+              <>
+                <div className="profile-notifications__row">
+                  <div className="profile-notifications__left">
+                    <Bell size={16} aria-hidden="true" />
+                    <span className="profile-notifications__text">
+                      {subscribed
+                        ? "Notificaciones activadas"
+                        : "Recibe alertas de nuevas reservas"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="profile-notifications__toggle"
+                    onClick={subscribed ? unsubscribe : subscribe}
+                    disabled={pushLoading}
+                    aria-label={
+                      subscribed
+                        ? "Desactivar notificaciones"
+                        : "Activar notificaciones"
+                    }
+                  >
+                    {pushLoading ? (
+                      <span className="profile-notifications__loading">
+                        ...
+                      </span>
+                    ) : subscribed ? (
+                      <ToggleRight size={28} aria-hidden="true" />
+                    ) : (
+                      <ToggleLeft size={28} aria-hidden="true" />
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="profile-notifications__toggle"
-                  onClick={subscribed ? unsubscribe : subscribe}
-                  disabled={pushLoading}
-                  aria-label={
-                    subscribed
-                      ? "Desactivar notificaciones"
-                      : "Activar notificaciones"
-                  }
-                >
-                  {pushLoading ? (
-                    <span className="profile-notifications__loading">...</span>
-                  ) : subscribed ? (
-                    <ToggleRight size={28} aria-hidden="true" />
-                  ) : (
-                    <ToggleLeft size={28} aria-hidden="true" />
-                  )}
-                </button>
-              </div>
+                <div className="profile-logout-wrap">
+                  <button
+                    type="button"
+                    className="profile-logout-btn"
+                    onClick={handleLogout}
+                    aria-label="Cerrar sesión"
+                  >
+                    <LogOut size={18} /> Cerrar sesión
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </form>

@@ -16,21 +16,16 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { useTenantById } from "../../hooks/useTenant.js";
 import { useBookingsByDate } from "../../hooks/useBookingsByDate.js";
 import { useProfessionals } from "../../hooks/useProfessionals.js";
-import { useServices } from "../../hooks/useServices.js";
-import { useBlocksByDate } from "../../hooks/useBlocksByDate.js";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   formatEntityPrice,
   formatPrice,
   formatTotalPrice,
   getFirstName,
-  getTotalPriceInfo,
   normalizePriceType,
   getEntityPriceInfo,
 } from "../../utils/format.js";
-import { calcAvailableSlots } from "../../utils/slots.js";
-import { normalizeChileanPhone } from "../../utils/phone.js";
-import { createBooking } from "../../lib/firestore/bookings.js";
+import { releaseBookingSlots } from "../../lib/firestore/bookings.js";
 import AdminLayout from "../../components/admin/AdminLayout.jsx";
 import {
   Phone,
@@ -444,30 +439,6 @@ export default function BookingsPage() {
     selectedDate,
   );
   const { data: professionals = [] } = useProfessionals(tenantId);
-  const { data: services = [] } = useServices(tenantId);
-
-  // Estado para crear reserva desde el panel (modal)
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createClientName, setCreateClientName] = useState("");
-  const [createClientPhone, setCreateClientPhone] = useState("");
-  const [createClientEmail, setCreateClientEmail] = useState("");
-  const [createSelectedServiceIds, setCreateSelectedServiceIds] = useState(
-    new Set(),
-  );
-  const [createDate, setCreateDate] = useState(selectedDate);
-  const { data: bookingsForCreateDate = [] } = useBookingsByDate(
-    tenantId,
-    createDate,
-  );
-  const { data: blocksForCreateDate = [] } = useBlocksByDate(
-    tenantId,
-    createDate,
-  );
-  const [availableSlots, setAvailableSlots] = useState([]);
-  const [selectedSlotIndex, setSelectedSlotIndex] = useState(null);
-  const [isSearchingSlots, setIsSearchingSlots] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState(null);
 
   // Estado para completar reserva (modal de cobro)
   const [completeModalOpen, setCompleteModalOpen] = useState(false);
@@ -598,6 +569,13 @@ export default function BookingsPage() {
           doc(db, "tenants", tenantId, "bookings", bookingId),
           payload,
         );
+
+        if (newStatus === "cancelled") {
+          const booking = (bookings || []).find((b) => b.id === bookingId);
+          if (booking?.slotIds?.length) {
+            await releaseBookingSlots(tenantId, booking.slotIds);
+          }
+        }
       }
       queryClient.invalidateQueries({
         queryKey: ["bookings-date", tenantId, selectedDate],
@@ -651,209 +629,18 @@ export default function BookingsPage() {
     locale: es,
   });
 
-  // Abrir la página pública de reserva en una nueva pestaña, preseleccionando al profesional
+  // Abrir la página pública de reserva en nueva pestaña con profesional preseleccionado
   function handleOpenBookingPageForClient() {
-    if (!tenantId || !professionalId) return;
-    // Inicializar estado del modal
-    setCreateDate(selectedDate);
-    setCreateClientName("");
-    setCreateClientPhone("");
-    setCreateClientEmail("");
-    setCreateSelectedServiceIds(new Set());
-    setAvailableSlots([]);
-    setSelectedSlotIndex(null);
-    setCreateError(null);
-    setCreateModalOpen(true);
-  }
-
-  function closeCreateModal() {
-    setCreateModalOpen(false);
-  }
-
-  function toggleCreateService(serviceId) {
-    setCreateSelectedServiceIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(serviceId)) next.delete(serviceId);
-      else next.add(serviceId);
-      return next;
-    });
-  }
-
-  async function handleSearchSlots() {
-    setCreateError(null);
-    setAvailableSlots([]);
-    setSelectedSlotIndex(null);
-
-    const ids = Array.from(createSelectedServiceIds);
-    if (!ids.length) {
-      setCreateError("Selecciona al menos un servicio");
-      return;
-    }
-
-    const selectedServices = services.filter((s) => ids.includes(s.id));
-    const assignments = {};
-    for (const s of selectedServices) assignments[s.id] = professionalId;
-
-    try {
-      setIsSearchingSlots(true);
-      const slots = calcAvailableSlots({
-        date: createDate,
-        tenant,
-        assignments,
-        selectedServices,
-        professionals,
-        existingBookings: bookingsForCreateDate,
-        existingBlocks: blocksForCreateDate,
-      });
-
-      setAvailableSlots(slots || []);
-      if (!(slots && slots.length)) {
-        setCreateError(
-          "No hay horarios disponibles para la selección indicada.",
-        );
-      }
-    } catch (err) {
-      console.error("Error al calcular slots:", err);
-      setCreateError("Error al buscar horarios. Intenta nuevamente.");
-    } finally {
-      setIsSearchingSlots(false);
-    }
-  }
-
-  function getDepositRequiredForBooking(tenantDeposit, items) {
-    if (!tenantDeposit?.enabled) return false;
-    const list = Array.isArray(items) ? items : [];
-    const allItemsFree =
-      list.length > 0 &&
-      list.every((i) => normalizePriceType(i?.priceType) === "free");
-    if (allItemsFree) return false;
-
-    if (tenantDeposit.type === "fixed") {
-      return (Number(tenantDeposit.amount) || 0) > 0;
-    }
-
-    if (tenantDeposit.type === "per_service") {
-      return (list || []).some(
-        (item) =>
-          normalizePriceType(item?.priceType) !== "free" &&
-          (Number(item.depositAmount) || 0) > 0,
-      );
-    }
-
-    return false;
-  }
-
-  async function handleSubmitCreateBooking() {
-    setCreateError(null);
-    if (!tenantId || !professionalId) return;
-    if (selectedSlotIndex == null) {
-      setCreateError("Selecciona un horario");
-      return;
-    }
-
-    const normalizedPhone =
-      normalizeChileanPhone(createClientPhone) ||
-      createClientPhone?.trim() ||
-      "";
-    const normalizedClientData = {
-      clientName: createClientName?.trim() || "",
-      clientPhone: normalizedPhone,
-      clientEmail: createClientEmail?.trim() || "",
-    };
-
-    const slot = availableSlots[selectedSlotIndex];
-    if (!slot) {
-      setCreateError("Horario inválido");
-      return;
-    }
-
-    // Construir items desde slot.order (igual que en BookingPage)
-    const items = slot.order.flatMap((group) =>
-      group.services.map((service) => {
-        const prof = professionals.find((p) => p.id === group.profId);
-        const priceType = normalizePriceType(service?.priceType);
-        const priceFields =
-          priceType === "range"
-            ? {
-                priceType,
-                price: Number(service.priceMin) || 0,
-                priceMin: Number(service.priceMin) || 0,
-                priceMax: Number(service.priceMax) || 0,
-              }
-            : priceType === "tbd"
-              ? {
-                  priceType,
-                  price: 0,
-                  priceText: (service.priceText || "").trim() || undefined,
-                }
-              : priceType === "free"
-                ? { priceType, price: 0 }
-                : { priceType: "fixed", price: Number(service.price) || 0 };
-
-        if (priceFields.priceText === undefined) delete priceFields.priceText;
-
-        return {
-          serviceId: service.id,
-          serviceName: service.name,
-          professionalId: group.profId,
-          professionalName: prof?.name || "",
-          professionalSlug: prof?.slug || "",
-          startTime: service.start || group.start,
-          endTime: service.end || group.end,
-          ...priceFields,
-          duration: service.duration,
-          depositAmount:
-            priceType === "free" ? 0 : Number(service.depositAmount) || 0,
-        };
-      }),
-    );
-
-    const totalPriceInfo = getTotalPriceInfo(items);
-    const totalPrice =
-      totalPriceInfo.kind === "fixed" ? totalPriceInfo.amount : null;
-
-    const depositRequired = getDepositRequiredForBooking(
-      tenant?.deposit,
-      items,
-    );
-    const autoConfirmed =
-      Boolean(tenant?.autoConfirmBookings) && !depositRequired;
-
-    const booking = {
-      clientName: normalizedClientData.clientName,
-      clientPhone: normalizedClientData.clientPhone,
-      clientEmail: normalizedClientData.clientEmail,
-      date: Timestamp.fromDate(parseISO(createDate)),
-      dateStr: createDate,
-      status: autoConfirmed ? "confirmed" : "pending",
-      createdAt: Timestamp.now(),
-      notes: "",
-      items,
-      totalPrice,
-      totalDuration: items.reduce((s, i) => s + i.duration, 0),
-    };
-
-    try {
-      setIsCreating(true);
-      const result = await createBooking(tenantId, booking, tenant?.deposit);
-      queryClient.invalidateQueries({
-        queryKey: ["bookings-date", tenantId, createDate],
-      });
-      setIsCreating(false);
-      setCreateModalOpen(false);
-      // Abrir página de estado de reserva en nueva pestaña
-      if (tenant?.slug) {
-        try {
-          window.open(`/${tenant.slug}/reserva/${result.id}`, "_blank");
-        } catch (e) {
-          // ignore
-        }
-      }
-    } catch (err) {
-      console.error("Error al crear reserva desde panel:", err);
-      setCreateError("Error al crear la reserva. Intenta nuevamente.");
-      setIsCreating(false);
-    }
+    if (!tenant?.slug || !professionalId) return;
+    const prof = professionals.find((p) => p.id === professionalId);
+    const profSlug = prof?.slug || professionalId;
+    const base =
+      import.meta.env.VITE_PUBLIC_APP_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+    const url = `${base.replace(/\/$/, "")}/${tenant.slug}/pro/${encodeURIComponent(
+      profSlug,
+    )}#servicios`;
+    window.open(url, "_blank");
   }
 
   function handleSetCompleteAmount(serviceId, value) {
@@ -1100,166 +887,6 @@ export default function BookingsPage() {
                 tenantSlug={tenantSlug}
               />
             ))}
-          </div>
-        )}
-
-        {/* Modal: Crear reserva desde panel (profesional) */}
-        {createModalOpen && (
-          <div className="modal-overlay" onClick={closeCreateModal}>
-            <div
-              className="modal-card modal-card--form"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-card__header">
-                <h3 className="modal-card__title">
-                  Crear reserva para cliente
-                </h3>
-                <button
-                  className="modal-card__close"
-                  onClick={closeCreateModal}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="modal-card__body modal-card__body--scroll">
-                <p className="booking-detail__label">Cliente</p>
-                <input
-                  type="text"
-                  placeholder="Nombre del cliente"
-                  value={createClientName}
-                  onChange={(e) => setCreateClientName(e.target.value)}
-                  className="date-input"
-                />
-                <input
-                  type="tel"
-                  placeholder="Teléfono del cliente"
-                  value={createClientPhone}
-                  onChange={(e) => setCreateClientPhone(e.target.value)}
-                  className="date-input"
-                />
-                <input
-                  type="email"
-                  placeholder="Email (opcional)"
-                  value={createClientEmail}
-                  onChange={(e) => setCreateClientEmail(e.target.value)}
-                  className="date-input"
-                />
-                <p className="modal-note">
-                  Si no se proporciona email, no se notificarán automáticamente
-                  las actualizaciones de la reserva al cliente.
-                </p>
-
-                <p className="booking-detail__label">Servicios</p>
-                {services.filter((s) =>
-                  (s.professionalIds || []).includes(professionalId),
-                ).length === 0 ? (
-                  <p>No hay servicios asignados a este profesional.</p>
-                ) : (
-                  services
-                    .filter((s) =>
-                      (s.professionalIds || []).includes(professionalId),
-                    )
-                    .map((s) => (
-                      <label key={s.id} className="modal-item">
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <div>
-                            <input
-                              type="checkbox"
-                              checked={createSelectedServiceIds.has(s.id)}
-                              onChange={() => toggleCreateService(s.id)}
-                            />
-                            <span style={{ marginLeft: 8 }}>{s.name}</span>
-                          </div>
-                          <span className="modal-item__price">
-                            {formatEntityPrice(s)}
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "var(--color-text-tertiary)",
-                          }}
-                        >
-                          {s.duration} min
-                        </div>
-                      </label>
-                    ))
-                )}
-
-                <p className="booking-detail__label">Fecha</p>
-                <input
-                  type="date"
-                  value={createDate}
-                  onChange={(e) => setCreateDate(e.target.value)}
-                  className="date-input"
-                />
-
-                <div style={{ marginTop: 8 }}>
-                  <button
-                    className="action-btn action-btn--confirm"
-                    onClick={handleSearchSlots}
-                    disabled={isSearchingSlots}
-                  >
-                    {isSearchingSlots ? "Buscando..." : "Buscar horarios"}
-                  </button>
-                </div>
-
-                {createError && (
-                  <p style={{ color: "var(--color-error)", marginTop: 8 }}>
-                    {createError}
-                  </p>
-                )}
-
-                {availableSlots.length > 0 && (
-                  <div style={{ marginTop: 12 }}>
-                    <p className="booking-detail__label">
-                      Horarios disponibles
-                    </p>
-                    <div
-                      className="slots-grid"
-                      role="list"
-                      aria-label="Horarios disponibles"
-                    >
-                      {availableSlots.map((slot, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          className={`slot-card ${selectedSlotIndex === idx ? "slot-card--selected" : ""}`}
-                          onClick={() => setSelectedSlotIndex(idx)}
-                        >
-                          <div className="slot-card__time">
-                            {slot.startTime}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="modal-card__actions">
-                <button
-                  className="action-btn action-btn--cancel"
-                  onClick={closeCreateModal}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="action-btn action-btn--confirm"
-                  onClick={handleSubmitCreateBooking}
-                  disabled={isCreating || selectedSlotIndex == null}
-                >
-                  {isCreating ? "Creando..." : "Crear reserva"}
-                </button>
-              </div>
-            </div>
           </div>
         )}
 

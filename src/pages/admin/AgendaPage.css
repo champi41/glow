@@ -1,7 +1,7 @@
 /* src/pages/admin/AgendaPage.css */
 
 .agenda-page {
-  padding-top: 120px;
+  padding-top: 145px;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -12,8 +12,8 @@
 .agendaHeader {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  padding: 15px;
+  gap: 10px;
+  padding: 15px 15px 10px;
   background-color: var(--color-bg);
   position: fixed;
   top: 0;
@@ -150,7 +150,7 @@
 .agenda-time-axis__body {
   position: relative;
   /* let the axis grow so the page becomes the primary scroller */
-  min-height: calc(var(--visible-hours, 12) * var(--hour-height, 56px));
+  min-height: 10px;
 }
 
 .agenda-time-label {
@@ -219,7 +219,7 @@
 .agenda-col__body {
   position: relative;
   /* grow with content so the page scrolls vertically */
-  min-height: calc(var(--visible-hours, 12) * var(--hour-height, 56px));
+  min-height: 10px;
 }
 
 /* ── Líneas de hora ── */
@@ -508,4 +508,12 @@
 .agenda-hour-line--blocked {
   background: rgba(0, 0, 0, 0.04);
   cursor: pointer;
+}
+
+/* Mensaje de instrucción debajo de la navegación */
+.agenda-instruction {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  display: flex;
+  justify-content: center;
 }

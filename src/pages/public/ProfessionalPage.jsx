@@ -288,7 +288,11 @@ export default function ProfessionalPage() {
           )}
         </section>
       )}
-      <section className="prof-page-section" ref={servicesSectionRef}>
+      <section
+        className="prof-page-section"
+        ref={servicesSectionRef}
+        id="servicios"
+      >
         <div className="prof-section-header">
           <h2 className="prof-section-title">Servicios</h2>
         </div>
